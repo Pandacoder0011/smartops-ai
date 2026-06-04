@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+:root {
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+
+  --muted: 223 47% 11%;
+  --muted-foreground: 215.4 16.3% 56.9%;
+
+  --popover: 224 71% 4%;
+  --popover-foreground: 213 31% 91%;
+
+  --card: 222 47% 6%;
+  --card-foreground: 213 31% 91%;
+
+  --border: 217.2 32.6% 12%;
+  --input: 217.2 32.6% 12%;
+
+  --primary: 263.4 70% 50.4%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 217.2 32.6% 12%;
+  --secondary-foreground: 210 40% 98%;
+
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+
+  --ring: 263.4 70% 50.4%;
+
+  --radius: 0.75rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(13, 17, 28, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: rgba(18, 24, 38, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+  outline: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Glowing animations */
+.glow-primary {
+  box-shadow: 0 0 20px 0 rgba(139, 92, 246, 0.15);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
