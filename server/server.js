@@ -11,6 +11,7 @@ import connectDB from './config/db.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import analyticsRoutes from './routes/analyticsRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import DashboardMetric from './models/DashboardMetric.js';
 
@@ -67,6 +68,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health Check API
 app.get('/api/health', (req, res) => {

@@ -60,9 +60,6 @@ const productSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// SKU unique index
-productSchema.index({ sku: 1 }, { unique: true });
-
 // Pre-save hook to map stock levels to status automatically
 productSchema.pre('save', function(next) {
   if (this.sku) {
