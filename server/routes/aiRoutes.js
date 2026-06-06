@@ -1,8 +1,20 @@
 import express from 'express';
-import { queryAICopilot } from '../controllers/aiController.js';
+import { 
+  chat, 
+  getInsights, 
+  getPrediction, 
+  getHistory 
+} from '../controllers/aiController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/query', queryAICopilot);
+// Protect all AI-related routes
+router.use(protect);
+
+router.post('/chat', chat);
+router.get('/insights', getInsights);
+router.get('/predict', getPrediction);
+router.get('/history', getHistory);
 
 export default router;
