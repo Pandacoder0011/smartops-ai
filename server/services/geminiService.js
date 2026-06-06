@@ -1,18 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import dotenv from 'dotenv';
-dotenv.config();
-
-// We check if API key is present
-const hasApiKey = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_google_gemini_api_key_here';
-
-let aiInstance = null;
-if (hasApiKey) {
-  try {
-    aiInstance = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  } catch (err) {
-    console.error('Error initializing GoogleGenerativeAI:', err.message);
-  }
-}
+import geminiAI from '../config/gemini.js';
 
 export const analyzeMetricsWithGemini = async (prompt, metricsData) => {
   const systemPrompt = `You are SmartOps AI, a premium business intelligence copilot. 
@@ -22,14 +8,14 @@ ${JSON.stringify(metricsData, null, 2)}
 Analyze this data and respond to the user's prompt: "${prompt}".
 Provide clear, actionable operational advice. Format your response with markdown, using bullet points, bold text, and brief tables where appropriate. Keep it professional and visually structured.`;
 
-  if (hasApiKey && aiInstance) {
+  if (geminiAI) {
     try {
-      const model = aiInstance.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = geminiAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       return response.text();
     } catch (error) {
-      console.error('Gemini API execution failed, using local fallback analyzer:', error.message);
+      console.error('🔴 Gemini API execution failed, using local fallback analyzer:', error.message);
       return getFallbackAnalysis(prompt, metricsData);
     }
   } else {
