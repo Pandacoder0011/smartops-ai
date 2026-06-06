@@ -56,6 +56,7 @@ export const updateMetric = async (req, res, next) => {
     // Emit Socket.io event for real-time updates if io is attached
     if (req.app.get('socketio')) {
       req.app.get('socketio').emit('metric_update', metric);
+      req.app.get('socketio').emit('dashboard-update', metric);
     }
     
     res.status(200).json({ success: true, data: metric });
@@ -108,6 +109,7 @@ export const uploadCSV = async (req, res, next) => {
 
             if (io) {
               io.emit('metric_update', metric);
+              io.emit('dashboard-update', metric);
             }
           }
         }

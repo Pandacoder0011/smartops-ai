@@ -1,6 +1,6 @@
 import express from 'express';
 import http from 'http';
-import { Server } from 'socket.io';
+import { initSocket } from './config/socket.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -32,12 +32,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Socket.io Setup
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
-  }
-});
+const io = initSocket(server);
 
 // Expose socketio to requests
 app.set('socketio', io);
@@ -75,14 +70,6 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date() });
 });
 
-// Socket connection logic
-io.on('connection', (socket) => {
-  console.log(`Socket client connected: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`Socket client disconnected: ${socket.id}`);
-  });
-});
 
 // Telemetry Metric Emulator for premium visual updates
 setInterval(async () => {
@@ -113,6 +100,7 @@ setInterval(async () => {
       
       await metric.save();
       io.emit('metric_update', metric);
+      io.emit('dashboard-update', metric);
     }
   } catch (error) {
     // Silent catch during initial db load

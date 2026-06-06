@@ -4,6 +4,8 @@ import Customer from '../models/Customer.js';
 import Employee from '../models/Employee.js';
 import Transaction from '../models/Transaction.js';
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
+import { emitNewSale, emitLowStockAlert } from '../config/socket.js';
 
 // ==========================================
 // 1. Tool Declarations (Gemini API format)
@@ -140,6 +142,68 @@ export const executeTool = async (functionCall) => {
         const data = JSON.parse(dataJson);
         console.log(`📝 [DB Insert] Creating new ${entityType} record:`, data);
         const record = await Model.create(data);
+
+        // Real-time integration hooks
+        if (entityType === 'Sale') {
+          try {
+            // 1. Process products and update stock levels
+            if (record.products && record.products.length > 0) {
+              for (const item of record.products) {
+                const product = await Product.findById(item.product);
+                if (product) {
+                  // Update stock and status pre-save triggers automatically
+                  product.stock = Math.max(0, product.stock - item.quantity);
+                  await product.save();
+
+                  // 2. Check if product stock falls below minimum threshold
+                  if (product.stock <= product.minStock) {
+                    // Emit Socket.io low stock alert event
+                    emitLowStockAlert(product);
+
+                    // Find target user for the Notification
+                    let targetUserId = null;
+                    if (record.employee) {
+                      const emp = await Employee.findById(record.employee);
+                      if (emp) {
+                        targetUserId = emp.userId;
+                      }
+                    }
+                    if (!targetUserId) {
+                      const fallbackUser = await User.findOne({});
+                      if (fallbackUser) {
+                        targetUserId = fallbackUser._id;
+                      }
+                    }
+
+                    if (targetUserId) {
+                      // Save notification to DB
+                      await Notification.create({
+                        userId: targetUserId,
+                        type: 'inventory_alert',
+                        message: `Stock for product '${product.name}' (${product.sku}) is low: only ${product.stock} units remaining (min limit: ${product.minStock}).`,
+                        priority: 'high'
+                      });
+                    }
+                  }
+                }
+              }
+            }
+
+            // 3. Populate and emit new-sale event
+            const populatedSale = await Sale.findById(record._id)
+              .populate('customer')
+              .populate({
+                path: 'employee',
+                populate: { path: 'userId' }
+              })
+              .populate('products.product');
+
+            emitNewSale(populatedSale);
+          } catch (hookErr) {
+            console.error('🔴 Error in Sale post-creation real-time hook:', hookErr.message);
+          }
+        }
+        
         return { success: true, message: `${entityType} created successfully`, data: record };
       }
       
