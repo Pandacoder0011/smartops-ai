@@ -10,7 +10,7 @@ Provide clear, actionable operational advice. Format your response with markdown
 
   if (geminiAI) {
     try {
-      const model = geminiAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = geminiAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       return response.text();
