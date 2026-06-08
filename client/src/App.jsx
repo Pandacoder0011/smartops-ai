@@ -1,108 +1,132 @@
-import React, { useState } from 'react';
-import Navbar from './components/layout/Navbar';
-import Sidebar from './components/layout/Sidebar';
-import Dashboard from './pages/Dashboard';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { SocketProvider } from './context/SocketContext';
 import { Toaster } from 'react-hot-toast';
+import { Loader2 } from 'lucide-react';
 
-function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+// Layout
+import Layout from './components/layout/Layout';
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'analytics':
-        return (
-          <div className="flex-1 p-6 flex flex-col justify-center items-center text-center space-y-4">
-            <h2 className="text-xl font-bold text-white">Detailed Analytics Analytics</h2>
-            <p className="text-sm text-zinc-400 max-w-md">Detailed predictive charts, anomaly detectors, and custom report builders are being synced from operational caches.</p>
-          </div>
-        );
-      case 'copilot':
-        return (
-          <div className="flex-1 p-6 flex flex-col justify-center items-center text-center space-y-4">
-            <h2 className="text-xl font-bold text-white">Operational Copilot Terminal</h2>
-            <p className="text-sm text-zinc-400 max-w-md">Ask questions about your enterprise metrics. Utilize the Chat widget on the main Dashboard page to begin.</p>
-          </div>
-        );
-      case 'upload':
-        return (
-          <div className="flex-1 p-6 flex flex-col justify-center items-center text-center space-y-4">
-            <h2 className="text-xl font-bold text-white">Import Datasets</h2>
-            <p className="text-sm text-zinc-400 max-w-md">Import operational CSV records to run instant AI-driven reviews. Visit the main Dashboard page to upload your CSV file.</p>
-          </div>
-        );
-      case 'logs':
-        return (
-          <div className="flex-1 p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white">Audit Log</h2>
-            <div className="rounded-xl glass-card overflow-hidden">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-zinc-900/60 border-b border-white/5 text-zinc-400 font-semibold">
-                    <th className="p-4">Timestamp</th>
-                    <th className="p-4">Action</th>
-                    <th className="p-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-zinc-300">
-                  <tr>
-                    <td className="p-4">2026-06-04 20:47:00</td>
-                    <td className="p-4">System connection established</td>
-                    <td className="p-4 text-emerald-400">Success</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">2026-06-04 20:49:15</td>
-                    <td className="p-4">Git initialized remote repository</td>
-                    <td className="p-4 text-emerald-400">Success</td>
-                  </tr>
-                  <tr>
-                    <td className="p-4">2026-06-04 20:53:22</td>
-                    <td className="p-4">MERN stack boilerplate files generated</td>
-                    <td className="p-4 text-emerald-400">Success</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      default:
-        return <Dashboard />;
-    }
-  };
+// Pages
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Products from './pages/Products';
+import Sales from './pages/Sales';
+import Customers from './pages/Customers';
+import Employees from './pages/Employees';
+import Finance from './pages/Finance';
+import Analytics from './pages/Analytics';
+import AIAssistant from './pages/AIAssistant';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
-  return (
-    <SocketProvider>
-      <div className="min-h-screen flex flex-col bg-zinc-950 text-foreground antialiased selection:bg-violet-600/30 selection:text-white">
-        {/* Glow gradients behind layouts */}
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-violet-600/10 to-indigo-600/0 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-gradient-to-br from-cyan-500/5 to-violet-500/0 rounded-full blur-3xl pointer-events-none"></div>
+// Route Guard: Protected/Private views
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
 
-        {/* Global Toast Alerts */}
-        <Toaster 
-          position="bottom-right" 
-          toastOptions={{
-            style: {
-              background: '#0d111c',
-              color: '#fff',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              fontSize: '12px'
-            }
-          }}
-        />
-
-        <Navbar />
-
-        <div className="flex-1 flex overflow-hidden">
-          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-          
-          <main className="flex-1 flex flex-col overflow-hidden">
-            {renderContent()}
-          </main>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto" />
+          <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">Validating session...</p>
         </div>
       </div>
-    </SocketProvider>
+    );
+  }
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Route Guard: Public only views (Login/Register)
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+      </div>
+    );
+  }
+
+  return !isAuthenticated ? children : <Navigate to="/dashboard" replace />;
+};
+
+function AppContent() {
+  return (
+    <Routes>
+      {/* Public Pages */}
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
+      />
+
+      {/* Protected Workspace Layout Pages */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="products" element={<Products />} />
+        <Route path="sales" element={<Sales />} />
+        <Route path="customers" element={<Customers />} />
+        <Route path="employees" element={<Employees />} />
+        <Route path="finance" element={<Finance />} />
+        <Route path="analytics" element={<Analytics />} />
+        <Route path="ai-assistant" element={<AIAssistant />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
+
+      {/* Fallback Redirection */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <SocketProvider>
+          <Router>
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                className: 'glass-card text-xs border border-white/5',
+                style: {
+                  background: '#09090b',
+                  color: '#fff',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }
+              }}
+            />
+            <AppContent />
+          </Router>
+        </SocketProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

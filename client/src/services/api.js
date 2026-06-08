@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005';
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
@@ -9,6 +9,68 @@ const api = axios.create({
   }
 });
 
+// Request interceptor to attach bearer token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle session expiration (401)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('🔑 Token expired or unauthorized request. Logging out user... 🛡️');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Dispatch custom event to trigger React state updates
+      window.dispatchEvent(new CustomEvent('unauthorized-redirect'));
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ------------------------------------------
+// Auth Services
+// ------------------------------------------
+export const authService = {
+  login: async (email, password) => {
+    const response = await api.post('/auth/login', { email, password });
+    return response.data;
+  },
+
+  register: async (userData) => {
+    const response = await api.post('/auth/register', userData);
+    return response.data;
+  },
+
+  getMe: async () => {
+    const response = await api.get('/auth/me');
+    return response.data;
+  },
+
+  updateProfile: async (profileData) => {
+    const response = await api.put('/auth/profile', profileData);
+    return response.data;
+  },
+
+  changePassword: async (passwordData) => {
+    const response = await api.put('/auth/change-password', passwordData);
+    return response.data;
+  }
+};
+
+// ------------------------------------------
+// Dashboard Metrics Services
+// ------------------------------------------
 export const dashboardService = {
   getMetrics: async () => {
     const response = await api.get('/dashboard/metrics');
@@ -32,9 +94,67 @@ export const dashboardService = {
   }
 };
 
+// ------------------------------------------
+// Analytics Services
+// ------------------------------------------
+export const analyticsService = {
+  getOverview: async () => {
+    const response = await api.get('/analytics/overview');
+    return response.data;
+  },
+
+  getSalesTrend: async (period = '30d') => {
+    const response = await api.get(`/analytics/sales-trend?period=${period}`);
+    return response.data;
+  },
+
+  getTopProducts: async (limit = 10) => {
+    const response = await api.get(`/analytics/top-products?limit=${limit}`);
+    return response.data;
+  },
+
+  getCustomerSegments: async () => {
+    const response = await api.get('/analytics/customer-segments');
+    return response.data;
+  },
+
+  getInventoryStatus: async () => {
+    const response = await api.get('/analytics/inventory-status');
+    return response.data;
+  },
+
+  getRevenueByRegion: async () => {
+    const response = await api.get('/analytics/revenue-by-region');
+    return response.data;
+  },
+
+  getEmployeePerformance: async () => {
+    const response = await api.get('/analytics/employee-performance');
+    return response.data;
+  },
+
+  getFinancialSummary: async () => {
+    const response = await api.get('/analytics/financial-summary');
+    return response.data;
+  }
+};
+
+// ------------------------------------------
+// AI Services
+// ------------------------------------------
 export const aiService = {
-  queryCopilot: async (prompt) => {
-    const response = await api.post('/ai/query', { prompt });
+  getInsights: async () => {
+    const response = await api.get('/ai/insights');
+    return response.data;
+  },
+
+  getPredictions: async () => {
+    const response = await api.get('/ai/predict');
+    return response.data;
+  },
+
+  getHistory: async () => {
+    const response = await api.get('/ai/history');
     return response.data;
   }
 };
