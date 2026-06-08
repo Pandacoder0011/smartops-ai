@@ -12,7 +12,8 @@ import {
   Bot,
   FileText,
   Settings,
-  ShieldAlert
+  ShieldAlert,
+  Activity
 } from 'lucide-react';
 
 const Sidebar = ({ isCollapsed }) => {
@@ -26,6 +27,7 @@ const Sidebar = ({ isCollapsed }) => {
     { path: '/analytics', label: 'Analytics Insights', icon: BarChart3 },
     { path: '/ai-assistant', label: 'AI Assistant', icon: Bot },
     { path: '/reports', label: 'Reports', icon: FileText },
+    { path: '/monitoring', label: 'System Health', icon: Activity },
     { path: '/settings', label: 'Settings', icon: Settings }
   ];
 

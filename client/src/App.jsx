@@ -22,6 +22,7 @@ import Analytics from './pages/Analytics';
 import AIAssistant from './pages/AIAssistant';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Monitoring from './pages/Monitoring';
 
 // Route Guard: Protected/Private views
 const ProtectedRoute = ({ children }) => {
@@ -97,6 +98,7 @@ function AppContent() {
         <Route path="ai-assistant" element={<AIAssistant />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="monitoring" element={<Monitoring />} />
       </Route>
 
       {/* Fallback Redirection */}
