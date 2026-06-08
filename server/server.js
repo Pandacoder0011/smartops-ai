@@ -12,6 +12,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import crudRoutes from './routes/crudRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import DashboardMetric from './models/DashboardMetric.js';
 
@@ -64,6 +65,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api', crudRoutes);
 
 // Health Check API
 app.get('/api/health', (req, res) => {

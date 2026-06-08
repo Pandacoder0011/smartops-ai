@@ -159,4 +159,124 @@ export const aiService = {
   }
 };
 
+// ------------------------------------------
+// Products Services
+// ------------------------------------------
+export const productsService = {
+  getAll: async (params) => {
+    const response = await api.get('/products', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/products/${id}`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/products', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/products/${id}`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/products/${id}`);
+    return response.data;
+  },
+  bulkDelete: async (ids) => {
+    const response = await api.post('/products/bulk-delete', { ids });
+    return response.data;
+  },
+  bulkUpdateStatus: async (ids, status) => {
+    const response = await api.post('/products/bulk-status', { ids, status });
+    return response.data;
+  }
+};
+
+// ------------------------------------------
+// Customers Services
+// ------------------------------------------
+export const customersService = {
+  getAll: async (params) => {
+    const response = await api.get('/customers', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/customers/${id}`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/customers', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/customers/${id}`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/customers/${id}`);
+    return response.data;
+  },
+  bulkDelete: async (ids) => {
+    const response = await api.post('/customers/bulk-delete', { ids });
+    return response.data;
+  }
+};
+
+// ------------------------------------------
+// Sales Services
+// ------------------------------------------
+export const salesService = {
+  getAll: async (params) => {
+    const response = await api.get('/sales', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/sales/${id}`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/sales', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/sales/${id}`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/sales/${id}`);
+    return response.data;
+  }
+};
+
+// ------------------------------------------
+// Employees Services
+// ------------------------------------------
+export const employeesService = {
+  getAll: async (params) => {
+    const response = await api.get('/employees', { params });
+    return response.data;
+  },
+  getById: async (id) => {
+    const response = await api.get(`/employees/${id}`);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/employees', data);
+    return response.data;
+  },
+  update: async (id, data) => {
+    const response = await api.put(`/employees/${id}`, data);
+    return response.data;
+  },
+  delete: async (id) => {
+    const response = await api.delete(`/employees/${id}`);
+    return response.data;
+  },
+  bulkDelete: async (ids) => {
+    const response = await api.post('/employees/bulk-delete', { ids });
+    return response.data;
+  }
+};
+
 export default api;
