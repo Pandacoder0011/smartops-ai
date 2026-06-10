@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/react';
 import { authService } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -9,33 +10,51 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const { isLoaded, isSignedIn, user: clerkUser } = useUser();
+  const { signOut } = useClerkAuth();
+
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [loading, setLoading] = useState(true);
 
-  // Initialize and check current user session on mount
+  // Sync Clerk authentication state with the backend MERN server
   useEffect(() => {
-    const checkSession = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
+    const syncBackend = async () => {
+      if (isLoaded && isSignedIn && clerkUser) {
+        const email = clerkUser.primaryEmailAddress?.emailAddress || 'clerk-user@example.com';
+        const name = clerkUser.fullName || 'Clerk User';
+        const mockCredential = `mock-google-token-${email}-${name}`;
+
         try {
-          const res = await authService.getMe();
+          const res = await authService.googleLogin({
+            credential: mockCredential,
+            company: 'Clerk Sandbox Inc',
+            role: 'admin'
+          });
+
           if (res.success) {
-            setUser(res.data);
-            localStorage.setItem('user', JSON.stringify(res.data));
-          } else {
-            handleLogout();
+            const { token: userToken, ...userData } = res.data;
+            setToken(userToken);
+            setUser(userData);
+            localStorage.setItem('token', userToken);
+            localStorage.setItem('user', JSON.stringify(userData));
           }
         } catch (error) {
-          console.error('Session verification failed:', error.message);
-          handleLogout();
+          console.error('Backend Clerk authentication sync failed:', error);
+          toast.error('Failed to sync authentication session with database server 🚨');
         }
+      } else if (isLoaded && !isSignedIn) {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
-      setLoading(false);
     };
 
-    checkSession();
+    syncBackend();
+  }, [isLoaded, isSignedIn, clerkUser]);
 
+  // Keep compatibility fallback for existing session checking logic
+  useEffect(() => {
     // Listen for unauthorized interceptor events
     const handleUnauthorized = () => {
       handleLogout();
@@ -105,7 +124,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      if (isSignedIn) {
+        await signOut();
+      }
+    } catch (err) {
+      console.error('Clerk signOut error:', err);
+    }
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
@@ -147,14 +173,14 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         token,
-        loading,
+        loading: !isLoaded,
         login: handleLogin,
         register: handleRegister,
         googleLogin: handleGoogleLogin,
         logout: handleLogout,
         updateProfile: handleUpdateProfile,
         changePassword: handleChangePassword,
-        isAuthenticated: !!token
+        isAuthenticated: isSignedIn
       }}
     >
       {children}

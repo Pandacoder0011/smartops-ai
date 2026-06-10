@@ -13,6 +13,10 @@ export default defineConfig({
       {
         find: /^es-toolkit\/compat\/(.*)$/,
         replacement: 'lodash-es/$1'
+      },
+      {
+        find: /^@clerk\/react$/,
+        replacement: path.resolve(__dirname, 'src/clerk-bridge.jsx')
       }
     ]
   },

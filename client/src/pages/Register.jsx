@@ -1,164 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Show,
+  SignInButton,
+  SignUpButton,
+  UserButton
+} from '@clerk/react';
 import {
   Activity,
-  Mail,
-  Lock,
-  User,
-  Building,
-  Loader2,
   ArrowRight,
   ShieldCheck,
   Award,
   Sparkles,
-  HelpCircle,
-  PlusCircle,
-  Link2
+  HelpCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
-import GoogleSimModal from '../components/common/GoogleSimModal';
 
 const Register = () => {
-  const { register, googleLogin } = useAuth();
-  const navigate = useNavigate();
-
-  const [workspaceMode, setWorkspaceMode] = useState('create'); // 'create' | 'join'
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [company, setCompany] = useState('');
-  const [workspaceId, setWorkspaceId] = useState('');
-  const [role, setRole] = useState('employee');
-  const [submitting, setSubmitting] = useState(false);
-  const [googleModalOpen, setGoogleModalOpen] = useState(false);
-
-  // Validation errors
-  const [errors, setErrors] = useState({});
-
   useEffect(() => {
     document.title = 'SmartOps AI - Enterprise Registration';
   }, []);
-
-  const handleGoogleCredentialResponse = async (response) => {
-    setSubmitting(true);
-    const result = await googleLogin({
-      credential: response.credential,
-      company: workspaceMode === 'create' ? company : undefined,
-      workspaceId: workspaceMode === 'join' ? workspaceId : undefined,
-      role
-    });
-    setSubmitting(false);
-    if (result.success) {
-      navigate('/dashboard');
-    }
-  };
-
-  useEffect(() => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (googleClientId && window.google) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: handleGoogleCredentialResponse,
-        });
-        const container = document.getElementById("google-register-btn");
-        if (container) {
-          window.google.accounts.id.renderButton(container, {
-            theme: "outline",
-            size: "large",
-            width: container.offsetWidth || 380,
-            text: "signup_with"
-          });
-        }
-      } catch (err) {
-        console.error("Failed to initialize Google One-Tap:", err);
-      }
-    }
-  }, [workspaceMode, company, workspaceId, role]);
-
-  const validateForm = () => {
-    const tempErrors = {};
-    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
-
-    if (!name) {
-      tempErrors.name = 'Full name is required 👤';
-    }
-
-    if (!email) {
-      tempErrors.email = 'Email address is required ✉️';
-    } else if (!emailRegex.test(email)) {
-      tempErrors.email = 'Please enter a valid email format ✉️';
-    }
-
-    if (workspaceMode === 'create' && !company) {
-      tempErrors.company = 'Company name is required 🏢';
-    }
-
-    if (workspaceMode === 'join' && !workspaceId) {
-      tempErrors.workspaceId = 'Workspace ID is required 🔑';
-    }
-
-    if (!password) {
-      tempErrors.password = 'Password is required 🔒';
-    } else if (!passwordRegex.test(password)) {
-      tempErrors.password = 'Must be 6+ chars with letters and numbers 🔒';
-    }
-
-    setErrors(tempErrors);
-    return Object.keys(tempErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setSubmitting(true);
-    const result = await register({
-      name,
-      email,
-      password,
-      company: workspaceMode === 'create' ? company : undefined,
-      workspaceId: workspaceMode === 'join' ? workspaceId : undefined,
-      role
-    });
-    setSubmitting(false);
-
-    if (result.success) {
-      navigate('/dashboard');
-    }
-  };
-
-  const handleGoogleSignUpClick = () => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (googleClientId) {
-      // Official Google SSO prompt
-      if (window.google) {
-        window.google.accounts.id.prompt();
-      } else {
-        toast.error('Google accounts library not loaded yet ⏳');
-      }
-    } else {
-      // Sandbox Simulator modal fallback
-      setGoogleModalOpen(true);
-    }
-  };
-
-  const handleGoogleSimSuccess = async (token) => {
-    setSubmitting(true);
-    const result = await googleLogin({
-      credential: token,
-      company: workspaceMode === 'create' ? company : undefined,
-      workspaceId: workspaceMode === 'join' ? workspaceId : undefined,
-      role
-    });
-    setSubmitting(false);
-    if (result.success) {
-      navigate('/dashboard');
-    }
-  };
 
   return (
     <div className="min-h-screen flex bg-zinc-950 transition-colors duration-300 select-none">
@@ -174,251 +35,85 @@ const Register = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md space-y-5 relative z-10 text-zinc-100"
+          className="w-full max-w-md space-y-8 relative z-10 text-zinc-100"
         >
           {/* Header */}
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-violet-600 flex items-center justify-center glow-primary mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-violet-600 flex items-center justify-center glow-primary mb-4">
               <Activity className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">Register workspace</h2>
-            <p className="text-xs text-zinc-400 mt-1">Initialize or join your MERN operational database analytics.</p>
-          </div>
 
-          {/* Social Sign Up / Google button */}
-          <div className="w-full">
-            {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-              <div id="google-register-btn" className="w-full flex justify-center h-[40px]"></div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleGoogleSignUpClick}
-                className="w-full py-2.5 px-4 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/20 text-zinc-200 text-xs font-semibold shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer h-[40px]"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-                </svg>
-                <span>Register with Google</span>
-              </button>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center justify-between text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
-            <div className="w-[42%] h-[1px] bg-white/5" />
-            <span>or</span>
-            <div className="w-[42%] h-[1px] bg-white/5" />
-          </div>
-
-          {/* Workspace Mode Tabs */}
-          <div className="grid grid-cols-2 p-1 bg-zinc-900 border border-white/5 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode('create')}
-              className={`py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                workspaceMode === 'create'
-                  ? 'bg-gradient-to-r from-cyan-500/20 to-violet-500/20 border border-cyan-500/35 text-cyan-400 font-bold'
-                  : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
-              }`}
+            {/* Dynamic Dynamic Bold Title */}
+            <motion.h1
+              className="text-4xl md:text-5xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-cyan-400 to-indigo-500 uppercase pb-2"
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+              }}
+              transition={{
+                duration: 8,
+                ease: 'linear',
+                repeat: Infinity
+              }}
+              style={{ backgroundSize: '200% 200%' }}
             >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Create Workspace</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode('join')}
-              className={`py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                workspaceMode === 'join'
-                  ? 'bg-gradient-to-r from-cyan-500/20 to-violet-500/20 border border-cyan-500/35 text-cyan-400 font-bold'
-                  : 'text-zinc-400 hover:text-zinc-200 border border-transparent'
-              }`}
-            >
-              <Link2 className="w-3.5 h-3.5" />
-              <span>Join Workspace</span>
-            </button>
+              SmartOps AI
+            </motion.h1>
+            <div className="h-[2px] w-32 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full mb-2" />
+
+            <p className="text-xs text-zinc-400 mt-2">Initialize or join your MERN operational database analytics.</p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Authentication Container */}
+          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-xl">
             
-            {/* Full Name */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Full Name</label>
-              <div className="relative flex items-center">
-                <User className="w-4 h-4 text-zinc-500 absolute left-3 pointer-events-none" />
-                <input
-                  type="text"
-                  value={name}
-                  disabled={submitting}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (errors.name) setErrors({ ...errors, name: null });
-                  }}
-                  placeholder="Sarah Connor"
-                  className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-lg glass-input ${
-                    errors.name ? 'border-red-500/50 focus:border-red-500' : ''
-                  }`}
-                />
-              </div>
-              {errors.name && (
-                <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-red-400 font-semibold">
-                  {errors.name}
-                </motion.p>
-              )}
-            </div>
-
-            {/* Email Address */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Email Address</label>
-              <div className="relative flex items-center">
-                <Mail className="w-4 h-4 text-zinc-500 absolute left-3 pointer-events-none" />
-                <input
-                  type="email"
-                  value={email}
-                  disabled={submitting}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors({ ...errors, email: null });
-                  }}
-                  placeholder="name@company.com"
-                  className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-lg glass-input ${
-                    errors.email ? 'border-red-500/50 focus:border-red-500' : ''
-                  }`}
-                />
-              </div>
-              {errors.email && (
-                <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-red-400 font-semibold">
-                  {errors.email}
-                </motion.p>
-              )}
-            </div>
-
-            {/* Conditional Input based on tab */}
-            {workspaceMode === 'create' ? (
-              /* Company Name */
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Company Name</label>
-                <div className="relative flex items-center">
-                  <Building className="w-4 h-4 text-zinc-500 absolute left-3 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={company}
-                    disabled={submitting}
-                    onChange={(e) => {
-                      setCompany(e.target.value);
-                      if (errors.company) setErrors({ ...errors, company: null });
-                    }}
-                    placeholder="SmartOps Inc"
-                    className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-lg glass-input ${
-                      errors.company ? 'border-red-500/50 focus:border-red-500' : ''
-                    }`}
-                  />
+            {/* Signed Out View */}
+            <Show when="signed-out">
+              <div className="space-y-4">
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  User accounts and workspaces are managed securely by Clerk. Click below to begin.
+                </p>
+                <div className="flex flex-col gap-3 pt-2">
+                  <SignUpButton mode="modal">
+                    <button className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white text-xs font-bold shadow-md shadow-cyan-500/10 transition-all cursor-pointer flex items-center justify-center gap-2">
+                      Register with Clerk 🚀
+                    </button>
+                  </SignUpButton>
+                  <SignInButton mode="modal">
+                    <button className="w-full py-3 px-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-violet-500/20 text-zinc-200 text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2">
+                      Sign In to Workspace
+                    </button>
+                  </SignInButton>
                 </div>
-                {errors.company && (
-                  <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-red-400 font-semibold">
-                    {errors.company}
-                  </motion.p>
-                )}
               </div>
-            ) : (
-              /* Workspace ID */
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Workspace ID</label>
-                <div className="relative flex items-center">
-                  <Link2 className="w-4 h-4 text-zinc-500 absolute left-3 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={workspaceId}
-                    disabled={submitting}
-                    onChange={(e) => {
-                      setWorkspaceId(e.target.value);
-                      if (errors.workspaceId) setErrors({ ...errors, workspaceId: null });
-                    }}
-                    placeholder="company-name-1234"
-                    className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-lg glass-input ${
-                      errors.workspaceId ? 'border-red-500/50 focus:border-red-500' : ''
-                    }`}
-                  />
-                </div>
-                {errors.workspaceId && (
-                  <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-red-400 font-semibold">
-                    {errors.workspaceId}
-                  </motion.p>
-                )}
-              </div>
-            )}
+            </Show>
 
-            {/* System Role and Password */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">System Role</label>
-                <select
-                  value={role}
-                  disabled={submitting}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3 py-2.5 text-xs rounded-lg glass-input appearance-none bg-zinc-900 border border-white/5 cursor-pointer text-zinc-300"
+            {/* Signed In View */}
+            <Show when="signed-in">
+              <div className="space-y-4 text-center">
+                <div className="flex justify-center py-2">
+                  <UserButton afterSignOutUrl="/register" />
+                </div>
+                <p className="text-xs text-zinc-300">
+                  You are registered and authenticated! Click below to enter your workspace dashboard.
+                </p>
+                <Link
+                  to="/dashboard"
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
                 >
-                  <option value="employee">Employee</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Administrator</option>
-                </select>
+                  <span>Enter Dashboard</span>
+                  <ArrowRight className="w-4.5 h-4.5" />
+                </Link>
               </div>
+            </Show>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">Password</label>
-                <div className="relative flex items-center">
-                  <Lock className="w-4 h-4 text-zinc-500 absolute left-3 pointer-events-none" />
-                  <input
-                    type="password"
-                    value={password}
-                    disabled={submitting}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (errors.password) setErrors({ ...errors, password: null });
-                    }}
-                    placeholder="••••••••"
-                    className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-lg glass-input ${
-                      errors.password ? 'border-red-500/50 focus:border-red-500' : ''
-                    }`}
-                  />
-                </div>
-                {errors.password && (
-                  <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-[10px] text-red-400 font-semibold">
-                    {errors.password}
-                  </motion.p>
-                )}
-              </div>
-            </div>
+          </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-600 hover:from-cyan-400 hover:to-violet-500 disabled:from-zinc-850 disabled:to-zinc-850 text-white text-xs font-semibold shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Registering database profiles...</span>
-                </>
-              ) : (
-                <>
-                  <span>Create Account</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Redirection */}
+          {/* Redirection fallback */}
           <div className="text-center text-xs text-zinc-400">
-            <span>Already have an account? </span>
-            <Link to="/login" className="text-cyan-400 font-semibold hover:underline">
-              Sign In
-            </Link>
+            <span>Authentication powered by </span>
+            <a href="https://clerk.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 font-semibold hover:underline">
+              Clerk Dev Suite
+            </a>
           </div>
         </motion.div>
       </div>
@@ -490,14 +185,6 @@ const Register = () => {
 
         </motion.div>
       </div>
-
-      {/* Simulated Google SSO Modal Sandbox */}
-      <GoogleSimModal
-        isOpen={googleModalOpen}
-        onClose={() => setGoogleModalOpen(false)}
-        onSuccess={handleGoogleSimSuccess}
-        title="Register with Google"
-      />
 
     </div>
   );
