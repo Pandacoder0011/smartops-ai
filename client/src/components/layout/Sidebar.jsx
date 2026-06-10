@@ -1,23 +1,27 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   Package,
   TrendingUp,
   Users,
   Briefcase,
-  DollarSign,
   BarChart3,
   Bot,
   FileText,
   Settings,
   ShieldAlert,
-  Activity
+  Activity,
+  Copy,
+  Check
 } from 'lucide-react';
 
 const Sidebar = ({ isCollapsed }) => {
+  const { user } = useAuth();
   const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+  const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -26,6 +30,14 @@ const Sidebar = ({ isCollapsed }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const handleCopy = () => {
+    if (user?.workspaceId) {
+      navigator.clipboard.writeText(user.workspaceId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -112,7 +124,55 @@ const Sidebar = ({ isCollapsed }) => {
       </div>
 
       {/* Sidebar Footer Panel */}
-      <div className="space-y-4">
+      <div className="space-y-3.5">
+        
+        {/* Workspace ID copy Widget */}
+        {user?.workspaceId && (
+          <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5 overflow-hidden relative group">
+            <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
+              {!isCollapsed ? (
+                <span>Workspace ID</span>
+              ) : (
+                <span className="mx-auto text-[8px]">WS</span>
+              )}
+            </div>
+            
+            <div className="flex items-center justify-between gap-1.5 mt-1">
+              {!isCollapsed ? (
+                <span
+                  className="text-xs font-mono font-semibold text-zinc-300 truncate max-w-[170px]"
+                  title={user.workspaceId}
+                >
+                  {user.workspaceId}
+                </span>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={handleCopy}
+                className={`p-1.5 rounded hover:bg-white/5 text-zinc-400 hover:text-white transition-all shrink-0 relative ${
+                  isCollapsed ? 'mx-auto' : 'ml-auto'
+                }`}
+                title={copied ? "Copied!" : "Copy Workspace ID"}
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                
+                {/* Micro-tooltip pop */}
+                {copied && !isCollapsed && (
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-[9px] bg-emerald-500 text-white rounded font-bold shadow-md whitespace-nowrap animate-bounce">
+                    Copied! 📋
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* SLA Progress Bar */}
         <div className="p-3 rounded-xl bg-zinc-900/50 border border-white/5 overflow-hidden">
           <div className="flex items-center space-x-2 text-[11px] text-zinc-400 mb-1">
             <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -137,6 +197,7 @@ const Sidebar = ({ isCollapsed }) => {
           </div>
         </div>
 
+        {/* Version info */}
         <div className="px-3 flex items-center justify-between text-xs text-zinc-500">
           <AnimatePresence mode="wait">
             {!isCollapsed ? (

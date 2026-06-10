@@ -6,7 +6,8 @@ import {
   getMe, 
   logout, 
   updateProfile, 
-  changePassword 
+  changePassword,
+  googleAuth
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -27,6 +28,7 @@ const loginLimiter = rateLimit({
 // Public endpoints
 router.post('/register', register);
 router.post('/login', loginLimiter, login);
+router.post('/google', googleAuth);
 
 // Protected endpoints
 router.get('/me', protect, getMe);

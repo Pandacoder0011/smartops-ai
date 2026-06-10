@@ -86,6 +86,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const handleGoogleLogin = async (googleData) => {
+    try {
+      const res = await authService.googleLogin(googleData);
+      if (res.success) {
+        const { token: userToken, ...userData } = res.data;
+        setToken(userToken);
+        setUser(userData);
+        localStorage.setItem('token', userToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+        toast.success(res.message || 'Google Login successful! 🎉');
+        return { success: true };
+      }
+    } catch (error) {
+      const errMsg = error.response?.data?.message || 'Google authentication failed.';
+      toast.error(errMsg);
+      return { success: false, error: errMsg };
+    }
+  };
+
   const handleLogout = () => {
     setToken(null);
     setUser(null);
@@ -131,6 +150,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         login: handleLogin,
         register: handleRegister,
+        googleLogin: handleGoogleLogin,
         logout: handleLogout,
         updateProfile: handleUpdateProfile,
         changePassword: handleChangePassword,

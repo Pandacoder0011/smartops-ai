@@ -37,6 +37,16 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please add a company name'],
     index: true
   },
+  workspaceId: {
+    type: String,
+    index: true,
+    default: function() {
+      if (this.company) {
+        return this.company.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(1000 + Math.random() * 9000);
+      }
+      return 'workspace-' + Math.floor(100000 + Math.random() * 900000);
+    }
+  },
   lastLogin: {
     type: Date,
     default: null
