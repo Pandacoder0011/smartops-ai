@@ -26,6 +26,10 @@ connectDB();
 
 // Initialize Express App
 const app = express();
+
+// Trust proxy for correct client IP detection under reverse proxies (Render, Vercel, etc.)
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 
 // Create upload folder if not exists
