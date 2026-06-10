@@ -19,14 +19,17 @@ export const useUser = () => {
   if (hasClerkKey) {
     return ClerkOriginal.useUser();
   }
+  
+  const signedIn = localStorage.getItem('smartops_sandbox_signed_in') !== 'false';
+
   return {
     isLoaded: true,
-    isSignedIn: true, // Sandbox mode defaults to auto-logged-in for seamless review
-    user: {
+    isSignedIn: signedIn,
+    user: signedIn ? {
       fullName: 'SmartOps Demo Admin',
       primaryEmailAddress: { emailAddress: 'admin@smartops.ai' },
       imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256'
-    }
+    } : null
   };
 };
 
@@ -35,13 +38,20 @@ export const useAuth = () => {
   if (hasClerkKey) {
     return ClerkOriginal.useAuth();
   }
+
+  const [signedIn, setSignedIn] = React.useState(() => {
+    return localStorage.getItem('smartops_sandbox_signed_in') !== 'false';
+  });
+
   return {
     isLoaded: true,
-    isSignedIn: true,
-    userId: 'mock-admin-id-123',
+    isSignedIn: signedIn,
+    userId: signedIn ? 'mock-admin-id-123' : null,
     getToken: async () => 'mock-jwt-token',
     signOut: async () => {
-      console.log('Mock sign out triggered');
+      localStorage.setItem('smartops_sandbox_signed_in', 'false');
+      setSignedIn(false);
+      window.location.href = '/login';
     }
   };
 };
@@ -51,9 +61,15 @@ export const SignInButton = ({ children, mode }) => {
   if (hasClerkKey) {
     return <ClerkOriginal.SignInButton mode={mode}>{children}</ClerkOriginal.SignInButton>;
   }
-  // Sandbox mode: Clicking triggers instant login/redirect
+  // Sandbox mode: Clicking triggers instant login/redirect and sets state
   return (
-    <div onClick={() => window.location.href = '/dashboard'} className="w-full">
+    <div 
+      onClick={() => {
+        localStorage.setItem('smartops_sandbox_signed_in', 'true');
+        window.location.href = '/dashboard';
+      }} 
+      className="w-full cursor-pointer"
+    >
       {children}
     </div>
   );
@@ -65,7 +81,13 @@ export const SignUpButton = ({ children, mode }) => {
     return <ClerkOriginal.SignUpButton mode={mode}>{children}</ClerkOriginal.SignUpButton>;
   }
   return (
-    <div onClick={() => window.location.href = '/dashboard'} className="w-full">
+    <div 
+      onClick={() => {
+        localStorage.setItem('smartops_sandbox_signed_in', 'true');
+        window.location.href = '/dashboard';
+      }} 
+      className="w-full cursor-pointer"
+    >
       {children}
     </div>
   );
@@ -79,6 +101,7 @@ export const UserButton = ({ afterSignOutUrl }) => {
   return (
     <div 
       onClick={() => {
+        localStorage.setItem('smartops_sandbox_signed_in', 'false');
         window.location.href = '/login';
       }}
       className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center bg-zinc-800 text-white text-xs font-bold cursor-pointer hover:bg-zinc-700 transition-colors"

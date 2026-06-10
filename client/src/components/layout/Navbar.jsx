@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = ({ isCollapsed, toggleSidebar }) => {
+  const navigate = useNavigate();
   const { connected } = useSocket();
   const { user, logout } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
@@ -190,7 +192,7 @@ const Navbar = ({ isCollapsed, toggleSidebar }) => {
                   <button
                     onClick={() => {
                       setProfileDropdownOpen(false);
-                      // future redirect to profile tab/settings
+                      navigate('/settings');
                     }}
                     className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
                   >
