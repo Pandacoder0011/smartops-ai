@@ -17,13 +17,22 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ isCollapsed }) => {
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/products', label: 'Products', icon: Package },
     { path: '/sales', label: 'Sales Invoices', icon: TrendingUp },
     { path: '/customers', label: 'Customers', icon: Users },
     { path: '/employees', label: 'Employees', icon: Briefcase },
-    { path: '/finance', label: 'Finance Ledger', icon: DollarSign },
     { path: '/analytics', label: 'Analytics Insights', icon: BarChart3 },
     { path: '/ai-assistant', label: 'AI Assistant', icon: Bot },
     { path: '/reports', label: 'Reports', icon: FileText },
@@ -33,9 +42,15 @@ const Sidebar = ({ isCollapsed }) => {
 
   return (
     <motion.aside
-      animate={{ width: isCollapsed ? 80 : 260 }}
+      animate={{ 
+        width: isCollapsed ? (isMobile ? 0 : 80) : 260,
+        x: isCollapsed && isMobile ? -260 : 0,
+        opacity: isCollapsed && isMobile ? 0 : 1
+      }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="h-[calc(100vh-73px)] border-r border-white/5 bg-zinc-950/60 flex flex-col justify-between p-4 z-20 shrink-0 select-none overflow-hidden"
+      className={`h-[calc(100vh-73px)] border-r border-white/5 bg-zinc-950/90 backdrop-blur-md flex flex-col justify-between p-4 z-20 shrink-0 select-none overflow-hidden ${
+        isMobile ? 'absolute left-0 top-0 shadow-2xl' : 'relative'
+      }`}
     >
       <div className="space-y-6">
         {/* Navigation Category Header */}

@@ -31,6 +31,10 @@ const Register = () => {
   // Validation errors
   const [errors, setErrors] = useState({});
 
+  React.useEffect(() => {
+    document.title = 'SmartOps AI - Enterprise Registration';
+  }, []);
+
   const validateForm = () => {
     const tempErrors = {};
     const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;

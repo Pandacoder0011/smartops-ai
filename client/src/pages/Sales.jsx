@@ -10,6 +10,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   DollarSign,
   Calendar,
   CreditCard,
@@ -120,6 +121,7 @@ const Sales = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - Sales Ledger & Receipts';
     fetchSales();
   }, [currentPage, debouncedSearch, statusFilter, paymentFilter, regionFilter, sortBy]);
 
@@ -264,6 +266,7 @@ const Sales = () => {
         if (!item.product) return `Item ${idx+1}: Choose a product`;
         if (item.quantity > item._maxStock) return `Item ${idx+1}: Stock insufficient (Available: ${item._maxStock})`;
         if (item.quantity <= 0) return `Item ${idx+1}: Quantity must be at least 1`;
+        if (item.priceAtSale < 0) return `Item ${idx+1}: Price cannot be negative`;
         return null;
       }).filter(Boolean);
       

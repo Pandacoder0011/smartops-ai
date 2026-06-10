@@ -3,10 +3,12 @@ import http from 'http';
 import { initSocket } from './config/socket.js';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import fs from 'fs';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
@@ -38,10 +40,31 @@ const io = initSocket(server);
 // Expose socketio to requests
 app.set('socketio', io);
 
-// Security Middlewares
+// Security & Optimization Middlewares
 app.use(helmet());
+app.use(compression());
+
+// CORS Setup (Supports process.env.CLIENT_URL whitelist in production)
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map(url => url.trim())
+  : ['http://localhost:5173'];
+
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        console.warn(`🚨 CORS Blocked: Origin ${origin} not permitted by CLIENT_URL whitelist.`);
+        callback(new Error('Blocked by CORS policy'), false);
+      }
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true
 }));
 
@@ -51,7 +74,7 @@ app.use(morgan('dev'));
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 requests per windowMs
+  max: 10000, // limit each IP to 10000 requests per windowMs (relaxed for local testing)
   message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' }
 });
 app.use('/api', limiter);
@@ -69,7 +92,23 @@ app.use('/api', crudRoutes);
 
 // Health Check API
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date() });
+  const dbState = mongoose.connection.readyState;
+  let dbStatus = 'disconnected';
+  if (dbState === 1) dbStatus = 'connected';
+  else if (dbState === 2) dbStatus = 'connecting';
+  else if (dbState === 3) dbStatus = 'disconnecting';
+
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date(),
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    database: {
+      status: dbStatus,
+      readyState: dbState
+    }
+  });
 });
 
 

@@ -28,6 +28,7 @@ const Login = () => {
 
   // Check for remembered email on boot
   useEffect(() => {
+    document.title = 'SmartOps AI - Enterprise Login';
     const remembered = localStorage.getItem('remembered_email');
     if (remembered) {
       setEmail(remembered);

@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Layers,
   Users,
+  Briefcase,
   DollarSign,
   Check
 } from 'lucide-react';
@@ -87,6 +88,7 @@ const Reports = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - Operational Reports Workspace';
     fetchReportSourceData();
     triggerAISummary();
   }, []);

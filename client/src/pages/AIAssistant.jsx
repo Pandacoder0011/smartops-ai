@@ -48,6 +48,7 @@ import {
 import { aiService } from '../services/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005';
+const sanitizedApiUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
 
 const AIAssistant = () => {
   // --- State Variables ---
@@ -159,6 +160,7 @@ const AIAssistant = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - AI Intelligence Workspace';
     fetchInsightsAndPredictions();
   }, []);
 
@@ -272,7 +274,7 @@ const AIAssistant = () => {
 
     // 2. Fetch connection with stream
     try {
-      const response = await fetch(`${API_URL}/api/ai/chat`, {
+      const response = await fetch(`${sanitizedApiUrl}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

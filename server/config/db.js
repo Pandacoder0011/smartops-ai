@@ -3,7 +3,18 @@ import mongoose from 'mongoose';
 const MAX_RETRIES = 5;
 const RETRY_INTERVAL_MS = 5000;
 
+/**
+ * Establishes connection to MongoDB database.
+ * Supports auto-retry loops on credentials or server lookup errors.
+ * Command buffering is disabled globally so controller fallback checks fail fast.
+ * 
+ * @param {number} retryCount - Cumulative retry attempts tracker.
+ * @returns {Promise<void>}
+ */
 const connectDB = async (retryCount = 0) => {
+  // Disable command buffering globally so queries fail fast when disconnected
+  mongoose.set('bufferCommands', false);
+
   const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/smartops';
   console.log(`🔌 Attempting to connect to MongoDB... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
 

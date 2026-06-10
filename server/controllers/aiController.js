@@ -2,10 +2,20 @@ import AIChat from '../models/AIChat.js';
 import DashboardMetric from '../models/DashboardMetric.js';
 import { executeAgentChat } from '../services/aiAgentService.js';
 import geminiAI from '../config/gemini.js';
+import mongoose from 'mongoose';
 
-// @desc    Intelligent Chat with Copilot (SSE Streaming)
-// @route   POST /api/ai/chat
-// @access  Private
+// In-memory fallback chat logs when MongoDB is offline
+const mockChatSessions = [];
+
+/**
+ * Intelligent Chat with Copilot using SSE Streaming.
+ * Connects request context prompts to Gemini API or simulated custom mock buffers.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next function.
+ * @returns {Promise<void>}
+ */
 export const chat = async (req, res, next) => {
   const { prompt } = req.body;
   const userId = req.user._id;
@@ -20,21 +30,49 @@ export const chat = async (req, res, next) => {
   res.setHeader('Connection', 'keep-alive');
 
   try {
-    // 1. Fetch chat history or create a new session
+    // 1. Check database connection state
+    if (mongoose.connection.readyState !== 1 || !mongoose.Types.ObjectId.isValid(userId)) {
+      let chatSession = mockChatSessions.find(s => s.userId === userId.toString());
+      if (!chatSession) {
+        chatSession = { userId: userId.toString(), messages: [] };
+        mockChatSessions.push(chatSession);
+      }
+
+      // Keep history context to the last 10 messages
+      const contextHistory = chatSession.messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      let fullAssistantResponse = '';
+      const onStreamChunk = (chunk) => {
+        fullAssistantResponse += chunk;
+        res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      };
+
+      const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk);
+
+      // Save messages in memory
+      chatSession.messages.push({ role: 'user', content: prompt, timestamp: new Date() });
+      chatSession.messages.push({ role: 'assistant', content: finalAnswer, timestamp: new Date() });
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+      return;
+    }
+
+    // MongoDB path
     let chatSession = await AIChat.findOne({ userId });
     if (!chatSession) {
       chatSession = await AIChat.create({ userId, messages: [] });
     }
 
-    // Keep history context to the last 10 messages to avoid token bloat
     const contextHistory = chatSession.messages.slice(-10).map(msg => ({
       role: msg.role,
       content: msg.content
     }));
 
     let fullAssistantResponse = '';
-
-    // 2. Trigger Chat Agent execution
     const onStreamChunk = (chunk) => {
       fullAssistantResponse += chunk;
       res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
@@ -42,12 +80,10 @@ export const chat = async (req, res, next) => {
 
     const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk);
 
-    // 3. Save conversation back to Mongoose
     chatSession.messages.push({ role: 'user', content: prompt, timestamp: new Date() });
     chatSession.messages.push({ role: 'assistant', content: finalAnswer, timestamp: new Date() });
     await chatSession.save();
 
-    // End SSE connection cleanly
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (error) {
@@ -57,12 +93,32 @@ export const chat = async (req, res, next) => {
   }
 };
 
-// @desc    Generate business intelligence insights (Anomaly / Suggestions)
-// @route   GET /api/ai/insights
-// @access  Private
+/**
+ * Generates business intelligence summaries (Anomaly logs, pattern insights, suggestions) using Gemini or mock lists.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next function.
+ * @returns {Promise<void>}
+ */
 export const getInsights = async (req, res, next) => {
+  const mockData = {
+    anomalies: ["Unusually high conversion rate spike noticed during mid-week operations (+11.72%)"],
+    insights: ["System health and uptime are highly stable at 99.98%", "Total revenue has crossed $124,500"],
+    suggestions: ["Place restock order for out-of-stock items", "Launch weekday promotion to capitalize on high conversions"]
+  };
+
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(200).json({ success: true, source: 'mock', data: mockData });
+    }
+
     const metrics = await DashboardMetric.find({});
+    
+    if (!metrics || metrics.length === 0 || !geminiAI) {
+      return res.status(200).json({ success: true, source: 'mock', data: mockData });
+    }
+
     const prompt = `Inspect the following business metrics for anomalies, inventory deficiencies, and write a summary.
 Data: ${JSON.stringify(metrics, null, 2)}
 Output a JSON object with this shape:
@@ -72,39 +128,47 @@ Output a JSON object with this shape:
   "suggestions": ["list of action steps"]
 }`;
 
-    if (!geminiAI) {
-      // Mock insights fallback
-      return res.status(200).json({
-        success: true,
-        source: 'mock',
-        data: {
-          anomalies: ["Unusually high conversion rate spike noticed during mid-week operations (+11.72%)"],
-          insights: ["System health and uptime are highly stable at 99.98%", "Total revenue has crossed $124,500"],
-          suggestions: ["Place restock order for out-of-stock items", "Launch weekday promotion to capitalize on high conversions"]
-        }
-      });
-    }
-
     const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(prompt);
     let text = result.response.text();
     
-    // Sanitize JSON markdown wrapping if present
     text = text.replace(/```json|```/gi, '').trim();
     const insightsJson = JSON.parse(text);
 
-    res.status(200).json({ success: true, source: 'database', data: insightsJson });
+    return res.status(200).json({ success: true, source: 'database', data: insightsJson });
   } catch (error) {
-    next(error);
+    console.warn('⚠️ AI Insights generation failed, falling back to mock data:', error.message);
+    return res.status(200).json({ success: true, source: 'mock', data: mockData });
   }
 };
 
-// @desc    Predict sales trends / operational forecasts
-// @route   GET /api/ai/predict
-// @access  Private
+/**
+ * Generates predictive sales trend forecasts for weekly metrics.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next function.
+ * @returns {Promise<void>}
+ */
 export const getPrediction = async (req, res, next) => {
+  const mockData = [
+    { period: 'Week 1', predictedRevenue: 128000, confidence: 95 },
+    { period: 'Week 2', predictedRevenue: 132500, confidence: 90 },
+    { period: 'Week 3', predictedRevenue: 138000, confidence: 85 },
+    { period: 'Week 4', predictedRevenue: 144500, confidence: 80 }
+  ];
+
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(200).json({ success: true, source: 'mock', data: mockData });
+    }
+
     const metrics = await DashboardMetric.find({});
+    
+    if (!metrics || metrics.length === 0 || !geminiAI) {
+      return res.status(200).json({ success: true, source: 'mock', data: mockData });
+    }
+
     const prompt = `Analyze these KPI metrics and forecast weekly trends for the next 4 periods.
 Data: ${JSON.stringify(metrics, null, 2)}
 Output a JSON array containing forecast details:
@@ -113,20 +177,6 @@ Output a JSON array containing forecast details:
   { "period": "Week 2", "predictedRevenue": 135000, "confidence": 88 }
 ]`;
 
-    if (!geminiAI) {
-      // Mock prediction fallback
-      return res.status(200).json({
-        success: true,
-        source: 'mock',
-        data: [
-          { period: 'Week 1', predictedRevenue: 128000, confidence: 95 },
-          { period: 'Week 2', predictedRevenue: 132500, confidence: 90 },
-          { period: 'Week 3', predictedRevenue: 138000, confidence: 85 },
-          { period: 'Week 4', predictedRevenue: 144500, confidence: 80 }
-        ]
-      });
-    }
-
     const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(prompt);
     let text = result.response.text();
@@ -134,27 +184,47 @@ Output a JSON array containing forecast details:
     text = text.replace(/```json|```/gi, '').trim();
     const predictionJson = JSON.parse(text);
 
-    res.status(200).json({ success: true, source: 'database', data: predictionJson });
+    return res.status(200).json({ success: true, source: 'database', data: predictionJson });
   } catch (error) {
-    next(error);
+    console.warn('⚠️ AI Prediction generation failed, falling back to mock data:', error.message);
+    return res.status(200).json({ success: true, source: 'mock', data: mockData });
   }
 };
 
-// @desc    Retrieve chat history logs
-// @route   GET /api/ai/history
-// @access  Private
+/**
+ * Retrieves chat history logs database document session array for the authenticated user.
+ * 
+ * @param {import('express').Request} req - Express request object.
+ * @param {import('express').Response} res - Express response object.
+ * @param {import('express').NextFunction} next - Express next function.
+ * @returns {Promise<void>}
+ */
 export const getHistory = async (req, res, next) => {
   const userId = req.user._id;
 
   try {
+    if (mongoose.connection.readyState !== 1 || !mongoose.Types.ObjectId.isValid(userId)) {
+      const chatSession = mockChatSessions.find(s => s.userId === userId.toString());
+      return res.status(200).json({
+        success: true,
+        count: chatSession?.messages?.length || 0,
+        data: chatSession?.messages || []
+      });
+    }
+
     const chatSession = await AIChat.findOne({ userId });
-    
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: chatSession?.messages?.length || 0,
       data: chatSession?.messages || []
     });
   } catch (error) {
-    next(error);
+    console.warn('⚠️ AI History retrieval failed, falling back to mock data:', error.message);
+    const chatSession = mockChatSessions.find(s => s.userId === userId.toString());
+    return res.status(200).json({
+      success: true,
+      count: chatSession?.messages?.length || 0,
+      data: chatSession?.messages || []
+    });
   }
 };

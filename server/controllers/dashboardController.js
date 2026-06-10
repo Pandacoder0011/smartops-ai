@@ -1,6 +1,7 @@
 import DashboardMetric from '../models/DashboardMetric.js';
 import csv from 'csv-parser';
 import fs from 'fs';
+import mongoose from 'mongoose';
 
 // Mock initial data in case database is empty or connection fails
 const MOCK_METRICS = [
@@ -15,6 +16,10 @@ const MOCK_METRICS = [
 // @access  Public
 export const getMetrics = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(200).json({ success: true, count: MOCK_METRICS.length, data: MOCK_METRICS });
+    }
+
     let metrics = await DashboardMetric.find({});
     
     // Seed mock data if DB is empty

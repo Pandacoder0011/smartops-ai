@@ -17,9 +17,16 @@ Guidelines:
 - Be concise, professional, and focus on delivering actionable insights.
 - If the database returns empty arrays or errors, note that the collections might be empty, and offer to create a template record using createRecord.`;
 
-// ==========================================
-// Process Natural Language Copilot Queries
-// ==========================================
+/**
+ * Executes a natural language chat query against the Gemini AI Co-Pilot agent.
+ * Automatically delegates to appropriate database and reporting tool calls based on prompt context.
+ * Falls back to simulation mock data if API limits or credentials are not configured.
+ * 
+ * @param {string} userPrompt - The raw query/message input from the client.
+ * @param {Array<Object>} chatHistory - List of previous messages in the conversation format.
+ * @param {function} onStreamChunk - Callback function triggered to stream text chunks to client in real-time.
+ * @returns {Promise<string>} The complete combined text response message.
+ */
 export const executeAgentChat = async (userPrompt, chatHistory, onStreamChunk) => {
   if (!geminiAI) {
     // Return mock response if key is missing
@@ -88,13 +95,31 @@ export const executeAgentChat = async (userPrompt, chatHistory, onStreamChunk) =
     return finalResponseText;
   } catch (error) {
     console.error('🔴 [AI Agent Error] Generation failed:', error.message);
+    const msg = error.message.toLowerCase();
+    if (msg.includes('quota') || msg.includes('limit') || msg.includes('key') || msg.includes('api key') || msg.includes('invalid') || msg.includes('auth')) {
+      console.warn('⚠️ Gemini API key error, falling back to mock response...');
+      const mockMsg = getMockResponse(userPrompt) + '\n\n*(Note: Displaying simulation data because Gemini API quota/key limits were reached)*';
+      // Stream mock response chunks
+      for (let i = 0; i < mockMsg.length; i += 20) {
+        const chunk = mockMsg.slice(i, i + 20);
+        onStreamChunk(chunk);
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
+      return mockMsg;
+    }
     const errMsg = `⚠️ Sorry, I encountered an issue processing your query with the Gemini engine: ${error.message}`;
     onStreamChunk(errMsg);
     return errMsg;
   }
 };
 
-// Fallback Mock agent content in case credentials are not ready
+/**
+ * Generates mock simulation responses representing real database stats, metrics,
+ * low-stock inventory, or customer logs to provide fallback capability.
+ * 
+ * @param {string} prompt - The user query to evaluate.
+ * @returns {string} The formatted mock response in markdown syntax.
+ */
 const getMockResponse = (prompt) => {
   const query = prompt.toLowerCase();
   if (query.includes('revenue') || query.includes('sales')) {

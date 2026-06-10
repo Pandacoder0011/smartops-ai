@@ -5,9 +5,12 @@ import Employee from '../models/Employee.js';
 import Transaction from '../models/Transaction.js';
 import mongoose from 'mongoose';
 
-// Heuristics check: if DB has no data, use mock fallbacks to keep dashboard premium
+// Heuristics check: if DB has no data or is disconnected, use mock fallbacks to keep dashboard premium
 const useMockFallback = async () => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return true;
+    }
     const saleCount = await Sale.countDocuments();
     return saleCount < 5;
   } catch (error) {

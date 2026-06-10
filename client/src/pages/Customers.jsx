@@ -137,6 +137,7 @@ const Customers = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - Customer Directory';
     fetchCustomers();
   }, [currentPage, debouncedSearch, segmentFilter, sortBy]);
 

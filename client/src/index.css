@@ -182,3 +182,60 @@ body {
 .glow-text {
   text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
 }
+
+/* Global Light Mode overrides for hardcoded Tailwind dark classes */
+.light .bg-zinc-955,
+.light .bg-zinc-950,
+.light .bg-zinc-950\/90,
+.light .bg-zinc-950\/80,
+.light .bg-zinc-950\/45,
+.light .bg-zinc-950\/40,
+.light .bg-zinc-950\/20,
+.light .bg-zinc-900,
+.light .bg-zinc-900\/40,
+.light .bg-zinc-900\/30,
+.light .bg-zinc-900\/20,
+.light .bg-zinc-900\/10,
+.light .bg-black,
+.light .bg-black\/80 {
+  background-color: hsl(var(--background)) !important;
+}
+
+.light .bg-zinc-900\/40:hover,
+.light .bg-zinc-900\/10:hover,
+.light .bg-zinc-850,
+.light .bg-zinc-850\/40,
+.light .bg-zinc-800,
+.light .bg-zinc-800\/80,
+.light .bg-zinc-850\/10,
+.light .hover\:bg-zinc-850:hover,
+.light .hover\:bg-zinc-800:hover,
+.light .hover\:bg-zinc-900:hover,
+.light .group:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.light .text-white,
+.light .text-zinc-100,
+.light .text-zinc-200,
+.light .text-zinc-300,
+.light .text-zinc-350,
+.light .text-zinc-400 {
+  color: hsl(var(--foreground)) !important;
+}
+
+.light .text-zinc-500,
+.light .text-zinc-550 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.light .border-white\/5,
+.light .border-white\/10,
+.light .border-zinc-800,
+.light .border-zinc-800\/80,
+.light .border-zinc-850,
+.light .border-zinc-850\/50,
+.light .border-zinc-850\/10 {
+  border-color: hsl(var(--border)) !important;
+}
+

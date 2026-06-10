@@ -12,10 +12,10 @@ import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Strict rate limiter for login to prevent brute force attacks (max 5 attempts per 15 minutes)
+// Strict rate limiter for login to prevent brute force attacks (max 1000 attempts per 15 minutes for local demo)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 attempts per windowMs
+  max: 1000, // limit each IP to 1000 attempts per windowMs (relaxed for testing)
   message: {
     success: false,
     message: 'Too many login attempts from this IP, please try again after 15 minutes 🔐'

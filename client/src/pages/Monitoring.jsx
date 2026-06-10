@@ -72,6 +72,7 @@ const Monitoring = () => {
 
   // --- Real-time Sockets Listeners ---
   useEffect(() => {
+    document.title = 'SmartOps AI - System Monitoring Telemetry';
     if (socket) {
       // Listen for socket triggers to append real-time telemetry logs
       socket.on('new-sale', (data) => {

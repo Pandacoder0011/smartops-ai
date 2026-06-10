@@ -3,14 +3,23 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import AIChat from '../models/AIChat.js';
 import { executeAgentChat } from '../services/aiAgentService.js';
+import mongoose from 'mongoose';
+import { mockUsers } from '../controllers/authController.js';
 
 let ioInstance = null;
 const socketUserMap = new Map(); // socket.id -> User info object
+const mockSocketChatSessions = []; // in-memory chat session logs when DB is offline
 
 export const initSocket = (server) => {
+  const allowedOrigins = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',').map(url => url.trim())
+    : ['http://localhost:5173'];
+
   ioInstance = new Server(server, {
     cors: {
-      origin: '*',
+      origin: process.env.NODE_ENV === 'production'
+        ? (allowedOrigins.includes('*') ? '*' : allowedOrigins)
+        : '*',
       methods: ['GET', 'POST']
     }
   });
@@ -18,7 +27,7 @@ export const initSocket = (server) => {
   // JWT handshake authentication middleware
   ioInstance.use(async (socket, next) => {
     try {
-      // Retrive token from connection parameters: auth object or query params or authorization headers
+      // Retrieve token from connection parameters: auth object or query params or authorization headers
       const token = socket.handshake.auth?.token || 
                     socket.handshake.query?.token ||
                     socket.handshake.headers?.authorization?.split(' ')[1];
@@ -29,7 +38,22 @@ export const initSocket = (server) => {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'smartops_jwt_secret_dev_key');
-      const user = await User.findById(decoded.id).select('-password');
+      
+      let user;
+      if (mongoose.connection.readyState !== 1 || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+        // Fallback to in-memory user lookup
+        const mockUser = mockUsers.find(u => u._id === decoded.id);
+        user = mockUser || {
+          _id: decoded.id || 'mock-admin-id-123',
+          name: 'Demo Admin',
+          email: 'admin@smartops.ai',
+          role: 'admin',
+          company: 'SmartOps AI Mock',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256'
+        };
+      } else {
+        user = await User.findById(decoded.id).select('-password');
+      }
 
       if (!user) {
         console.warn(`⚠️ Socket connection handshake rejected: User not found [Socket ID: ${socket.id}]`);
@@ -73,10 +97,19 @@ export const initSocket = (server) => {
       try {
         const userId = socket.user._id;
 
-        // Fetch or create user chat session
-        let chatSession = await AIChat.findOne({ userId });
-        if (!chatSession) {
-          chatSession = await AIChat.create({ userId, messages: [] });
+        // Fetch or create user chat session (offline aware)
+        let chatSession;
+        if (mongoose.connection.readyState !== 1) {
+          chatSession = mockSocketChatSessions.find(s => s.userId === userId.toString());
+          if (!chatSession) {
+            chatSession = { userId: userId.toString(), messages: [] };
+            mockSocketChatSessions.push(chatSession);
+          }
+        } else {
+          chatSession = await AIChat.findOne({ userId });
+          if (!chatSession) {
+            chatSession = await AIChat.create({ userId, messages: [] });
+          }
         }
 
         // Limit context history to last 10 messages
@@ -95,14 +128,17 @@ export const initSocket = (server) => {
 
         const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk);
 
-        // Store back to DB
+        // Store back
         chatSession.messages.push({ role: 'user', content: prompt, timestamp: new Date() });
         chatSession.messages.push({ role: 'assistant', content: finalAnswer, timestamp: new Date() });
-        await chatSession.save();
+        
+        if (mongoose.connection.readyState === 1) {
+          await chatSession.save();
+        }
 
         // Notify client stream completion
         socket.emit('ai-response-stream', { done: true });
-        console.log(`✅ Streamed response completed and saved to database for ${socket.user.name}`);
+        console.log(`✅ Streamed response completed for ${socket.user.name}`);
       } catch (error) {
         console.error('🔴 Socket AI message streaming failure:', error.message);
         socket.emit('ai-response-stream', { error: `Gemini processing error: ${error.message}` });

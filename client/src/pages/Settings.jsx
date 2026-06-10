@@ -6,6 +6,10 @@ import { motion } from 'framer-motion';
 const Settings = () => {
   const { user, updateProfile, changePassword } = useAuth();
 
+  React.useEffect(() => {
+    document.title = 'SmartOps AI - Settings & Profile';
+  }, []);
+
   // Profile states
   const [name, setName] = useState(user?.name || '');
   const [company, setCompany] = useState(user?.company || '');

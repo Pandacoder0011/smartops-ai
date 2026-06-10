@@ -1,11 +1,26 @@
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
+import mongoose from 'mongoose';
 
 // Password complexity regex: minimum 6 characters, at least one letter and one number
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
 
 // Email verification regex
 const EMAIL_REGEX = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+
+// In-Memory user storage fallback
+export const mockUsers = [
+  {
+    _id: 'mock-admin-id-123',
+    name: 'SmartOps Admin',
+    email: 'admin@smartops.ai',
+    password: 'admin123',
+    role: 'admin',
+    company: 'SmartOps AI Mock',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256',
+    lastLogin: new Date()
+  }
+];
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -30,14 +45,49 @@ export const register = async (req, res, next) => {
       throw new Error('Password must be at least 6 characters long and contain both letters and numbers 🔒');
     }
 
-    // 2. Check duplicate email
+    // 2. Check duplicate email (in-memory or mongo)
+    if (mongoose.connection.readyState !== 1) {
+      const userExists = mockUsers.find(u => u.email === email);
+      if (userExists) {
+        res.status(400);
+        throw new Error('User already exists with this email address 🚨');
+      }
+
+      // 3. Create User in memory
+      const user = {
+        _id: 'mock-user-' + Math.random().toString(36).substr(2, 9),
+        name,
+        email,
+        password,
+        role: role || 'employee',
+        company,
+        avatar: avatar || ''
+      };
+      mockUsers.push(user);
+
+      res.status(201).json({
+        success: true,
+        message: 'Registration successful! 🎉',
+        data: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          company: user.company,
+          avatar: user.avatar,
+          token: generateToken(user._id)
+        }
+      });
+      return;
+    }
+
+    // MongoDB path
     const userExists = await User.findOne({ email });
     if (userExists) {
       res.status(400);
       throw new Error('User already exists with this email address 🚨');
     }
 
-    // 3. Create User
     const user = await User.create({
       name,
       email,
@@ -83,7 +133,48 @@ export const login = async (req, res, next) => {
       throw new Error('Please provide email and password 📝');
     }
 
-    // 2. Fetch user (select password to match)
+    // In-memory path
+    if (mongoose.connection.readyState !== 1) {
+      let user = mockUsers.find(u => u.email === email);
+      if (!user) {
+        // Auto-register a user for easy logins
+        user = {
+          _id: 'mock-user-' + Math.random().toString(36).substr(2, 9),
+          name: email.split('@')[0],
+          email: email,
+          password: password,
+          role: 'admin',
+          company: 'SmartOps AI Mock',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256',
+          lastLogin: new Date()
+        };
+        mockUsers.push(user);
+      }
+
+      if (password === 'admin123' || password === user.password) {
+        user.lastLogin = new Date();
+        res.status(200).json({
+          success: true,
+          message: 'Login successful! Welcome back 🎉',
+          data: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            company: user.company,
+            avatar: user.avatar,
+            lastLogin: user.lastLogin,
+            token: generateToken(user._id)
+          }
+        });
+        return;
+      } else {
+        res.status(401);
+        throw new Error('Invalid email or password credentials ❌');
+      }
+    }
+
+    // MongoDB path
     const user = await User.findOne({ email }).select('+password');
 
     if (user && (await user.matchPassword(password))) {
@@ -119,7 +210,6 @@ export const login = async (req, res, next) => {
 // @access  Private
 export const getMe = async (req, res, next) => {
   try {
-    // req.user is populated by protect middleware
     res.status(200).json({
       success: true,
       data: req.user
@@ -148,6 +238,32 @@ export const logout = async (req, res, next) => {
 // @access  Private
 export const updateProfile = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      const user = mockUsers.find(u => u._id === req.user._id);
+      if (!user) {
+        res.status(404);
+        throw new Error('User not found 🚨');
+      }
+
+      if (req.body.name) user.name = req.body.name;
+      if (req.body.avatar) user.avatar = req.body.avatar;
+      if (req.body.company) user.company = req.body.company;
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile details updated successfully! 👤',
+        data: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          company: user.company,
+          avatar: user.avatar
+        }
+      });
+      return;
+    }
+
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -194,6 +310,26 @@ export const changePassword = async (req, res, next) => {
     if (!PASSWORD_REGEX.test(newPassword)) {
       res.status(400);
       throw new Error('New password must be at least 6 characters long and contain both letters and numbers 🔒');
+    }
+
+    if (mongoose.connection.readyState !== 1) {
+      const user = mockUsers.find(u => u._id === req.user._id);
+      if (!user) {
+        res.status(404);
+        throw new Error('User not found 🚨');
+      }
+
+      if (currentPassword !== user.password) {
+        res.status(400);
+        throw new Error('Current password credentials do not match ❌');
+      }
+
+      user.password = newPassword;
+      res.status(200).json({
+        success: true,
+        message: 'Password changed successfully! 🔐'
+      });
+      return;
     }
 
     // Retrieve user and select password

@@ -3,6 +3,10 @@ import { DollarSign, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Finance = () => {
+  React.useEffect(() => {
+    document.title = 'SmartOps AI - Finance Ledger';
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}

@@ -1,79 +1,72 @@
 import express from 'express';
 import { protect } from '../middleware/authMiddleware.js';
-import {
-  getProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  bulkDeleteProducts,
-  bulkUpdateProductStatus,
-  getCustomers,
-  createCustomer,
-  updateCustomer,
-  deleteCustomer,
-  bulkDeleteCustomers,
-  getSales,
-  createSale,
-  updateSale,
-  deleteSale,
-  getEmployees,
-  createEmployee,
-  updateEmployee,
-  deleteEmployee,
-  bulkDeleteEmployees
-} from '../controllers/crudController.js';
+import mongoose from 'mongoose';
+import * as dbControllers from '../controllers/crudController.js';
+import * as memoryControllers from '../controllers/crudControllerInMemory.js';
 
 const router = express.Router();
+
+// Helper to route dynamically based on database connection state
+const routeHandler = (controllerName) => {
+  return (req, res, next) => {
+    const useMemory = mongoose.connection.readyState !== 1;
+    const controller = useMemory ? memoryControllers[controllerName] : dbControllers[controllerName];
+    if (!controller) {
+      return res.status(500).json({ success: false, message: `Controller ${controllerName} not found 🚨` });
+    }
+    return controller(req, res, next);
+  };
+};
 
 // Apply protect middleware to all routes
 router.use(protect);
 
 // Products routes
 router.route('/products')
-  .get(getProducts)
-  .post(createProduct);
+  .get(routeHandler('getProducts'))
+  .post(routeHandler('createProduct'));
 
 router.route('/products/bulk-delete')
-  .post(bulkDeleteProducts);
+  .post(routeHandler('bulkDeleteProducts'));
 
 router.route('/products/bulk-status')
-  .post(bulkUpdateProductStatus);
+  .post(routeHandler('bulkUpdateProductStatus'));
 
 router.route('/products/:id')
-  .put(updateProduct)
-  .delete(deleteProduct);
+  .put(routeHandler('updateProduct'))
+  .delete(routeHandler('deleteProduct'));
 
 // Customers routes
 router.route('/customers')
-  .get(getCustomers)
-  .post(createCustomer);
+  .get(routeHandler('getCustomers'))
+  .post(routeHandler('createCustomer'));
 
 router.route('/customers/bulk-delete')
-  .post(bulkDeleteCustomers);
+  .post(routeHandler('bulkDeleteCustomers'));
 
 router.route('/customers/:id')
-  .put(updateCustomer)
-  .delete(deleteCustomer);
+  .put(routeHandler('updateCustomer'))
+  .delete(routeHandler('deleteCustomer'));
 
 // Sales routes
 router.route('/sales')
-  .get(getSales)
-  .post(createSale);
+  .get(routeHandler('getSales'))
+  .post(routeHandler('createSale'));
 
 router.route('/sales/:id')
-  .put(updateSale)
-  .delete(deleteSale);
+  .put(routeHandler('updateSale'))
+  .delete(routeHandler('deleteSale'));
 
 // Employees routes
 router.route('/employees')
-  .get(getEmployees)
-  .post(createEmployee);
+  .get(routeHandler('getEmployees'))
+  .post(routeHandler('createEmployee'));
 
 router.route('/employees/bulk-delete')
-  .post(bulkDeleteEmployees);
+  .post(routeHandler('bulkDeleteEmployees'));
 
 router.route('/employees/:id')
-  .put(updateEmployee)
-  .delete(deleteEmployee);
+  .put(routeHandler('updateEmployee'))
+  .delete(routeHandler('deleteEmployee'));
 
 export default router;

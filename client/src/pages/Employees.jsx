@@ -11,6 +11,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Mail,
   Briefcase,
   DollarSign,
@@ -123,6 +124,7 @@ const Employees = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - Employee Registry';
     fetchEmployees();
   }, [currentPage, debouncedSearch, deptFilter, sortBy]);
 

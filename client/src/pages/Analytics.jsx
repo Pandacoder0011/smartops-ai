@@ -87,6 +87,12 @@ const Analytics = () => {
   const [aiInsights, setAiInsights] = useState({ anomalies: [], insights: [], suggestions: [] });
   const [predictions, setPredictions] = useState([]);
 
+  // Derived dashboard target statistics
+  const stats = {
+    totalRevenue: analyticsOverview?.totals?.revenue || 0,
+    marginPercentage: financialSummary?.profitMargin || 0
+  };
+
   // Fetch telemetry
   const fetchAnalyticsData = async () => {
     setLoading(true);
@@ -134,6 +140,7 @@ const Analytics = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - Interactive Analytics BI';
     fetchAnalyticsData();
   }, [dateRange]);
 

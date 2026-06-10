@@ -26,9 +26,10 @@ export const SocketProvider = ({ children }) => {
     }
 
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005';
-    console.log(`🔌 Attempting secure Socket.io connection to: ${API_URL}`);
+    const socketUrl = API_URL.endsWith('/api') ? API_URL.slice(0, -4) : API_URL;
+    console.log(`🔌 Attempting secure Socket.io connection to: ${socketUrl}`);
     
-    const socketInstance = io(API_URL, {
+    const socketInstance = io(socketUrl, {
       transports: ['websocket', 'polling'],
       auth: { token }
     });

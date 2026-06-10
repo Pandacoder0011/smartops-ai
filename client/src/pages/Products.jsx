@@ -142,6 +142,7 @@ const Products = () => {
   };
 
   useEffect(() => {
+    document.title = 'SmartOps AI - Product Inventory Catalog';
     fetchProducts();
   }, [currentPage, debouncedSearch, statusFilter, categoryFilter, stockFilter, sortBy]);
 
@@ -350,17 +351,33 @@ const Products = () => {
   const validateForm = () => {
     const errors = {};
     if (!formData.name.trim()) errors.name = 'Product name is required';
-    if (!formData.sku.trim()) errors.sku = 'SKU is required';
+    if (!formData.sku.trim()) {
+      errors.sku = 'SKU is required';
+    } else if (!/^[A-Z0-9-]+$/i.test(formData.sku.trim())) {
+      errors.sku = 'SKU must contain only letters, numbers, and hyphens';
+    }
+    
     if (!formData.category.trim()) errors.category = 'Category is required';
     
     const price = parseFloat(formData.price);
-    if (isNaN(price) || price < 0) errors.price = 'Price must be a positive number';
+    if (isNaN(price) || price < 0) {
+      errors.price = 'Price must be a positive number';
+    }
     
     const cost = parseFloat(formData.cost);
-    if (isNaN(cost) || cost < 0) errors.cost = 'Cost must be a positive number';
+    if (isNaN(cost) || cost < 0) {
+      errors.cost = 'Cost must be a positive number';
+    }
+    
+    if (!isNaN(price) && !isNaN(cost) && cost > price) {
+      errors.price = 'Price should normally be greater than cost ⚠️';
+    }
     
     const stock = parseInt(formData.stock);
     if (isNaN(stock) || stock < 0) errors.stock = 'Stock must be a non-negative integer';
+
+    const minStock = parseInt(formData.minStock);
+    if (isNaN(minStock) || minStock < 0) errors.minStock = 'Min stock threshold must be non-negative';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;

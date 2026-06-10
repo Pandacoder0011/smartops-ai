@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 
 const Layout = () => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (window.innerWidth < 768) return true;
     const saved = localStorage.getItem('sidebar_collapsed');
     return saved === 'true';
   });
