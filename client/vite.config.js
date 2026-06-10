@@ -5,12 +5,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        keep_infinity: true,
-        drop_console: false
-      }
-    }
+    minify: false
   }
 })
