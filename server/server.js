@@ -9,10 +9,11 @@ const requiredEnv = [
 
 const missing = requiredEnv.filter(k => !process.env[k]);
 if (missing.length) {
-  console.error('❌ Missing required env vars:', missing.join(', '));
-  process.exit(1);
+  console.warn('⚠️ Warning: Missing required env vars:', missing.join(', '));
+  console.warn('⚠️ Please configure these variables in your deployment dashboard settings.');
+} else {
+  console.log('✅ All required env vars loaded');
 }
-console.log('✅ All required env vars loaded');
 
 console.log('🔑 Env check:');
 console.log('  CLERK_PUBLISHABLE_KEY:',

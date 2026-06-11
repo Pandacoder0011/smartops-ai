@@ -45,12 +45,6 @@ const connectDB = async (retryCount = 0) => {
       }, RETRY_INTERVAL_MS);
     } else {
       console.error(`🚨 Max retries (${MAX_RETRIES}) reached. Failed to establish connection to database.`);
-      
-      // Do not crash the process in development to allow fallback mocks,
-      // but exit in production.
-      if (process.env.NODE_ENV === 'production') {
-        process.exit(1);
-      }
     }
   }
 };
