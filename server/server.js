@@ -1,3 +1,32 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+// 🔑 Startup check & debug logging
+const requiredEnv = [
+  'CLERK_PUBLISHABLE_KEY',
+  'CLERK_SECRET_KEY',
+  'MONGODB_URI',
+];
+
+const missing = requiredEnv.filter(k => !process.env[k]);
+if (missing.length) {
+  console.error('❌ Missing required env vars:', missing.join(', '));
+  process.exit(1);
+}
+console.log('✅ All required env vars loaded');
+
+console.log('🔑 Env check:');
+console.log('  CLERK_PUBLISHABLE_KEY:',
+  process.env.CLERK_PUBLISHABLE_KEY ?
+  `${process.env.CLERK_PUBLISHABLE_KEY.substring(0, 12)}...` :
+  '❌ MISSING');
+console.log('  CLERK_SECRET_KEY:',
+  process.env.CLERK_SECRET_KEY ?
+  `${process.env.CLERK_SECRET_KEY.substring(0, 10)}...` :
+  '❌ MISSING');
+console.log('  MONGODB_URI:',
+  process.env.MONGODB_URI ? '✅ Set' : '❌ MISSING');
+
 import express from 'express';
 import http from 'http';
 import { initSocket } from './config/socket.js';
@@ -5,7 +34,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import mongoose from 'mongoose';
@@ -17,14 +45,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import crudRoutes from './routes/crudRoutes.js';
 import seedRoutes from './routes/seedRoutes.js';
 import { clerkAuthSetup } from './middleware/clerkAuth.js';
-import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import DashboardMetric from './models/DashboardMetric.js';
-
-// Load environment variables
-dotenv.config();
-
-// Connect to MongoDB
-connectDB();
 
 // Initialize Express App
 const app = express();
@@ -33,6 +54,9 @@ const app = express();
 app.set('trust proxy', 1);
 
 const server = http.createServer(app);
+
+// Connect DB
+connectDB();
 
 // Create upload folder if not exists
 const uploadDir = './uploads';
@@ -49,6 +73,9 @@ app.set('socketio', io);
 // Security & Optimization Middlewares
 app.use(helmet());
 app.use(compression());
+
+// Request Logging
+app.use(morgan('dev'));
 
 // CORS Setup (Supports process.env.CLIENT_URL whitelist in production)
 const allowedOrigins = process.env.CLIENT_URL
@@ -74,9 +101,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Request Logging
-app.use(morgan('dev'));
-
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -88,19 +112,12 @@ app.use('/api', limiter);
 // Webhook Routes (Mounted before express.json() to support SVIX raw body parsing)
 app.use('/api/webhooks', webhookRoutes);
 
-// Apply Clerk middleware globally for incoming requests
-app.use(clerkAuthSetup);
-
 // Request body parsing
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// API Routes
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/seed', seedRoutes);
-app.use('/api', crudRoutes);
+// Apply Clerk middleware globally for incoming requests
+app.use(clerkAuthSetup);
 
 // Health Check API
 app.get('/api/health', (req, res) => {
@@ -116,6 +133,7 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     uptime: process.uptime(),
     memoryUsage: process.memoryUsage(),
+    clerkConfigured: !!process.env.CLERK_SECRET_KEY,
     database: {
       status: dbStatus,
       readyState: dbState
@@ -123,6 +141,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Protected API Routes
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/seed', seedRoutes);
+app.use('/api', crudRoutes);
 
 // Telemetry Metric Emulator for premium visual updates
 setInterval(async () => {
@@ -160,12 +184,17 @@ setInterval(async () => {
   }
 }, 8000);
 
-// Error Handling Middlewares
-app.use(notFound);
-app.use(errorHandler);
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error('🔴 Global error:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
+  });
+});
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5005;
 
 server.listen(PORT, () => {
-  console.log(`SmartOps AI server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
