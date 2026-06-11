@@ -12,9 +12,10 @@ import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
-import authRoutes from './routes/authRoutes.js';
+import webhookRoutes from './routes/webhookRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import crudRoutes from './routes/crudRoutes.js';
+import { clerkAuthSetup } from './middleware/clerkAuth.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import DashboardMetric from './models/DashboardMetric.js';
 
@@ -83,6 +84,12 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// Webhook Routes (Mounted before express.json() to support SVIX raw body parsing)
+app.use('/api/webhooks', webhookRoutes);
+
+// Apply Clerk middleware globally for incoming requests
+app.use(clerkAuthSetup);
+
 // Request body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -90,7 +97,6 @@ app.use(express.urlencoded({ extended: true }));
 // API Routes
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/auth', authRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api', crudRoutes);
 

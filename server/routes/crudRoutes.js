@@ -1,5 +1,5 @@
 import express from 'express';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/clerkAuth.js';
 import mongoose from 'mongoose';
 import * as dbControllers from '../controllers/crudController.js';
 import * as memoryControllers from '../controllers/crudControllerInMemory.js';

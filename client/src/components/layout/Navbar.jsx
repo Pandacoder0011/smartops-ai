@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { UserButton, useUser } from '@clerk/clerk-react';
 import { useSocket } from '../../context/SocketContext';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Activity,
@@ -9,20 +9,15 @@ import {
   Settings,
   Sun,
   Moon,
-  LogOut,
-  ChevronDown,
-  Menu,
-  X,
-  User as UserIcon
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = ({ isCollapsed, toggleSidebar }) => {
   const { connected } = useSocket();
-  const { user, logout } = useAuth();
+  const { user } = useUser();
   const { theme, toggleTheme, isDark } = useTheme();
 
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Dynamic user initials
@@ -150,68 +145,18 @@ const Navbar = ({ isCollapsed, toggleSidebar }) => {
         <div className="h-6 w-[1px] bg-white/5"></div>
 
         {/* User Profile Area */}
-        <div className="relative">
-          <button
-            onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            className="flex items-center space-x-3 p-1.5 rounded-xl hover:bg-white/5 transition-all text-left cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 border border-white/10 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
-              {getUserInitials()}
-            </div>
-            <div className="hidden lg:block">
-              <p className="text-xs font-semibold text-white truncate max-w-[120px]">
-                {user ? user.name : 'Guest User'}
-              </p>
-              <p className="text-[10px] text-zinc-400 uppercase tracking-wider font-semibold truncate max-w-[120px]">
-                {user ? user.role : 'Guest'}
-              </p>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-zinc-400 hidden lg:block" />
-          </button>
-
-          <AnimatePresence>
-            {profileDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setProfileDropdownOpen(false)} />
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute right-0 mt-3 w-56 rounded-xl glass-card border border-white/5 p-2 shadow-xl z-40"
-                >
-                  <div className="px-3 py-2 border-b border-white/5 mb-1.5">
-                    <p className="text-xs font-bold text-white truncate">{user?.name}</p>
-                    <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
-                    <p className="text-[9px] text-violet-400 mt-0.5 font-semibold uppercase tracking-wider">
-                      {user?.company}
-                    </p>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      // future redirect to profile tab/settings
-                    }}
-                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
-                  >
-                    <UserIcon className="w-3.5 h-3.5" />
-                    <span>My Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setProfileDropdownOpen(false);
-                      logout();
-                    }}
-                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all text-left cursor-pointer border-t border-white/5 mt-1.5 pt-2"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-zinc-300 hidden md:block">
+            {user?.firstName || user?.emailAddresses?.[0]?.emailAddress}
+          </span>
+          <UserButton
+            afterSignOutUrl="/login"
+            appearance={{
+              elements: {
+                avatarBox: "h-10 w-10 ring-2 ring-indigo-500",
+              }
+            }}
+          />
         </div>
 
       </div>

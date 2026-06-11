@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import {
   LayoutDashboard,
   Package,
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ isCollapsed }) => {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
   const [copied, setCopied] = React.useState(false);
 
@@ -32,8 +32,9 @@ const Sidebar = ({ isCollapsed }) => {
   }, []);
 
   const handleCopy = () => {
-    if (user?.workspaceId) {
-      navigator.clipboard.writeText(user.workspaceId);
+    const workspaceId = user?.publicMetadata?.workspaceId;
+    if (workspaceId) {
+      navigator.clipboard.writeText(workspaceId);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -127,7 +128,7 @@ const Sidebar = ({ isCollapsed }) => {
       <div className="space-y-3.5">
         
         {/* Workspace ID copy Widget */}
-        {user?.workspaceId && (
+        {user?.publicMetadata?.workspaceId && (
           <div className="p-3 rounded-xl bg-zinc-900/40 border border-white/5 overflow-hidden relative group">
             <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
               {!isCollapsed ? (
@@ -141,9 +142,9 @@ const Sidebar = ({ isCollapsed }) => {
               {!isCollapsed ? (
                 <span
                   className="text-xs font-mono font-semibold text-zinc-300 truncate max-w-[170px]"
-                  title={user.workspaceId}
+                  title={user.publicMetadata.workspaceId}
                 >
-                  {user.workspaceId}
+                  {user.publicMetadata.workspaceId}
                 </span>
               ) : null}
 

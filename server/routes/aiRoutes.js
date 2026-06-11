@@ -5,7 +5,7 @@ import {
   getPrediction, 
   getHistory 
 } from '../controllers/aiController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/clerkAuth.js';
 
 const router = express.Router();
 

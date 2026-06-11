@@ -1,6 +1,40 @@
 import axios from 'axios';
+import { useAuth } from '@clerk/clerk-react';
+import { useMemo } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005';
+
+export const useApi = () => {
+  const { getToken } = useAuth();
+
+  const apiInstance = useMemo(() => {
+    const instance = axios.create({
+      baseURL: API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`,
+    });
+
+    instance.interceptors.request.use(async (config) => {
+      const token = await getToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+
+    instance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return instance;
+  }, [getToken]);
+
+  return apiInstance;
+};
 
 const api = axios.create({
   baseURL: API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`,
@@ -31,8 +65,7 @@ api.interceptors.response.use(
       console.warn('🔑 Token expired or unauthorized request. Logging out user... 🛡️');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Dispatch custom event to trigger React state updates
-      window.dispatchEvent(new CustomEvent('unauthorized-redirect'));
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

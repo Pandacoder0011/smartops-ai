@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@clerk/clerk-react';
 
 const SocketContext = createContext(null);
 
@@ -9,9 +9,28 @@ export const useSocket = () => {
 };
 
 export const SocketProvider = ({ children }) => {
-  const { token } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [token, setToken] = useState(null);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setToken(null);
+      return;
+    }
+
+    const fetchToken = async () => {
+      try {
+        const t = await getToken();
+        setToken(t);
+      } catch (err) {
+        console.error('Socket token retrieval failed:', err);
+      }
+    };
+
+    fetchToken();
+  }, [isSignedIn, getToken]);
 
   useEffect(() => {
     // If no token is present, ensure any active socket is disconnected

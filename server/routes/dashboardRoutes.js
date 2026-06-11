@@ -2,8 +2,12 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { getMetrics, updateMetric, uploadCSV } from '../controllers/dashboardController.js';
+import { protect } from '../middleware/clerkAuth.js';
 
 const router = express.Router();
+
+// Apply protect middleware to secure all dashboard endpoints
+router.use(protect);
 
 // Configure multer for CSV uploads
 const uploadDir = 'uploads/';
