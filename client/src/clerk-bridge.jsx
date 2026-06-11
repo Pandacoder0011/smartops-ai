@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as ClerkOriginal from '../node_modules/@clerk/react/dist/index.mjs';
 
 // Re-export all original Clerk components/hooks
@@ -19,13 +19,23 @@ export const useUser = () => {
   if (hasClerkKey) {
     return ClerkOriginal.useUser();
   }
-  
-  const signedIn = localStorage.getItem('smartops_sandbox_signed_in') !== 'false';
+
+  const [isSignedIn, setIsSignedIn] = useState(() => {
+    return localStorage.getItem('sandbox_signed_in') !== 'false';
+  });
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setIsSignedIn(localStorage.getItem('sandbox_signed_in') !== 'false');
+    };
+    window.addEventListener('sandbox-auth-change', handleAuthChange);
+    return () => window.removeEventListener('sandbox-auth-change', handleAuthChange);
+  }, []);
 
   return {
     isLoaded: true,
-    isSignedIn: signedIn,
-    user: signedIn ? {
+    isSignedIn,
+    user: isSignedIn ? {
       fullName: 'SmartOps Demo Admin',
       primaryEmailAddress: { emailAddress: 'admin@smartops.ai' },
       imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256'
@@ -39,20 +49,29 @@ export const useAuth = () => {
     return ClerkOriginal.useAuth();
   }
 
-  const [signedIn, setSignedIn] = React.useState(() => {
-    return localStorage.getItem('smartops_sandbox_signed_in') !== 'false';
+  const [isSignedIn, setIsSignedIn] = useState(() => {
+    return localStorage.getItem('sandbox_signed_in') !== 'false';
   });
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setIsSignedIn(localStorage.getItem('sandbox_signed_in') !== 'false');
+    };
+    window.addEventListener('sandbox-auth-change', handleAuthChange);
+    return () => window.removeEventListener('sandbox-auth-change', handleAuthChange);
+  }, []);
+
+  const signOut = useCallback(async () => {
+    localStorage.setItem('sandbox_signed_in', 'false');
+    window.dispatchEvent(new CustomEvent('sandbox-auth-change'));
+  }, []);
 
   return {
     isLoaded: true,
-    isSignedIn: signedIn,
-    userId: signedIn ? 'mock-admin-id-123' : null,
-    getToken: async () => 'mock-jwt-token',
-    signOut: async () => {
-      localStorage.setItem('smartops_sandbox_signed_in', 'false');
-      setSignedIn(false);
-      window.location.href = '/login';
-    }
+    isSignedIn,
+    userId: isSignedIn ? 'mock-admin-id-123' : null,
+    getToken: async () => isSignedIn ? 'mock-jwt-token' : null,
+    signOut
   };
 };
 
@@ -61,15 +80,13 @@ export const SignInButton = ({ children, mode }) => {
   if (hasClerkKey) {
     return <ClerkOriginal.SignInButton mode={mode}>{children}</ClerkOriginal.SignInButton>;
   }
-  // Sandbox mode: Clicking triggers instant login/redirect and sets state
+  const handleSignIn = () => {
+    localStorage.setItem('sandbox_signed_in', 'true');
+    window.dispatchEvent(new CustomEvent('sandbox-auth-change'));
+    window.location.href = '/dashboard';
+  };
   return (
-    <div 
-      onClick={() => {
-        localStorage.setItem('smartops_sandbox_signed_in', 'true');
-        window.location.href = '/dashboard';
-      }} 
-      className="w-full cursor-pointer"
-    >
+    <div onClick={handleSignIn} className="w-full cursor-pointer">
       {children}
     </div>
   );
@@ -80,14 +97,13 @@ export const SignUpButton = ({ children, mode }) => {
   if (hasClerkKey) {
     return <ClerkOriginal.SignUpButton mode={mode}>{children}</ClerkOriginal.SignUpButton>;
   }
+  const handleSignUp = () => {
+    localStorage.setItem('sandbox_signed_in', 'true');
+    window.dispatchEvent(new CustomEvent('sandbox-auth-change'));
+    window.location.href = '/dashboard';
+  };
   return (
-    <div 
-      onClick={() => {
-        localStorage.setItem('smartops_sandbox_signed_in', 'true');
-        window.location.href = '/dashboard';
-      }} 
-      className="w-full cursor-pointer"
-    >
+    <div onClick={handleSignUp} className="w-full cursor-pointer">
       {children}
     </div>
   );
@@ -98,12 +114,14 @@ export const UserButton = ({ afterSignOutUrl }) => {
   if (hasClerkKey) {
     return <ClerkOriginal.UserButton afterSignOutUrl={afterSignOutUrl} />;
   }
+  const handleSignOut = () => {
+    localStorage.setItem('sandbox_signed_in', 'false');
+    window.dispatchEvent(new CustomEvent('sandbox-auth-change'));
+    window.location.href = afterSignOutUrl || '/login';
+  };
   return (
     <div 
-      onClick={() => {
-        localStorage.setItem('smartops_sandbox_signed_in', 'false');
-        window.location.href = '/login';
-      }}
+      onClick={handleSignOut}
       className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center bg-zinc-800 text-white text-xs font-bold cursor-pointer hover:bg-zinc-700 transition-colors"
       title="Click to sign out (Sandbox)"
     >

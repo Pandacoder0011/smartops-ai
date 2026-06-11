@@ -13,8 +13,6 @@ export const mockUsers = [
   {
     _id: 'mock-admin-id-123',
     name: 'SmartOps Admin',
-    username: 'admin',
-    phoneNumber: '+1-555-0199',
     email: 'admin@smartops.ai',
     password: 'admin123',
     role: 'admin',
@@ -89,8 +87,6 @@ export const register = async (req, res, next) => {
       const user = {
         _id: 'mock-user-' + Math.random().toString(36).substr(2, 9),
         name,
-        username: name.toLowerCase().replace(/\s+/g, '_'),
-        phoneNumber: '+1-555-0100',
         email,
         password,
         role: role || 'employee',
@@ -106,8 +102,6 @@ export const register = async (req, res, next) => {
         data: {
           _id: user._id,
           name: user.name,
-          username: user.username || '',
-          phoneNumber: user.phoneNumber || '',
           email: user.email,
           role: user.role,
           company: user.company,
@@ -128,8 +122,6 @@ export const register = async (req, res, next) => {
 
     const user = await User.create({
       name,
-      username: name.toLowerCase().replace(/\s+/g, '_'),
-      phoneNumber: '+1-555-0100',
       email,
       password,
       role: role || 'employee',
@@ -145,8 +137,6 @@ export const register = async (req, res, next) => {
         data: {
           _id: user._id,
           name: user.name,
-          username: user.username || '',
-          phoneNumber: user.phoneNumber || '',
           email: user.email,
           role: user.role,
           company: user.company,
@@ -185,8 +175,6 @@ export const login = async (req, res, next) => {
         user = {
           _id: 'mock-user-' + Math.random().toString(36).substr(2, 9),
           name: email.split('@')[0],
-          username: email.split('@')[0],
-          phoneNumber: '+1-555-0100',
           email: email,
           password: password,
           role: 'admin',
@@ -205,8 +193,6 @@ export const login = async (req, res, next) => {
           data: {
             _id: user._id,
             name: user.name,
-            username: user.username || '',
-            phoneNumber: user.phoneNumber || '',
             email: user.email,
             role: user.role,
             company: user.company,
@@ -236,8 +222,6 @@ export const login = async (req, res, next) => {
         data: {
           _id: user._id,
           name: user.name,
-          username: user.username || '',
-          phoneNumber: user.phoneNumber || '',
           email: user.email,
           role: user.role,
           company: user.company,
@@ -296,8 +280,6 @@ export const updateProfile = async (req, res, next) => {
       }
 
       if (req.body.name) user.name = req.body.name;
-      if (req.body.username) user.username = req.body.username;
-      if (req.body.phoneNumber) user.phoneNumber = req.body.phoneNumber;
       if (req.body.avatar) user.avatar = req.body.avatar;
       if (req.body.company) user.company = req.body.company;
 
@@ -307,8 +289,6 @@ export const updateProfile = async (req, res, next) => {
         data: {
           _id: user._id,
           name: user.name,
-          username: user.username,
-          phoneNumber: user.phoneNumber,
           email: user.email,
           role: user.role,
           company: user.company,
@@ -327,8 +307,6 @@ export const updateProfile = async (req, res, next) => {
 
     // Update allowable fields
     if (req.body.name) user.name = req.body.name;
-    if (req.body.username) user.username = req.body.username;
-    if (req.body.phoneNumber) user.phoneNumber = req.body.phoneNumber;
     if (req.body.avatar) user.avatar = req.body.avatar;
     if (req.body.company) user.company = req.body.company;
 
@@ -340,8 +318,6 @@ export const updateProfile = async (req, res, next) => {
       data: {
         _id: updatedUser._id,
         name: updatedUser.name,
-        username: updatedUser.username,
-        phoneNumber: updatedUser.phoneNumber,
         email: updatedUser.email,
         role: updatedUser.role,
         company: updatedUser.company,
@@ -464,8 +440,6 @@ export const googleAuth = async (req, res, next) => {
         data: {
           _id: user._id,
           name: user.name,
-          username: user.username || '',
-          phoneNumber: user.phoneNumber || '',
           email: user.email,
           role: user.role,
           company: user.company,
@@ -514,16 +488,12 @@ export const googleAuth = async (req, res, next) => {
         company: resolvedCompany,
         workspaceId: resolvedWorkspaceId || undefined, // Mongoose default triggers if undefined
         role: role || 'admin',
-        avatar: picture || '',
-        username: name.toLowerCase().replace(/\s+/g, '_'),
-        phoneNumber: '+1-555-0100'
+        avatar: picture || ''
       });
     } else {
       newUser = {
         _id: 'mock-google-user-' + Math.random().toString(36).substr(2, 9),
         name,
-        username: name.toLowerCase().replace(/\s+/g, '_'),
-        phoneNumber: '+1-555-0100',
         email,
         password: randomPassword,
         company: resolvedCompany,
@@ -541,8 +511,6 @@ export const googleAuth = async (req, res, next) => {
       data: {
         _id: newUser._id,
         name: newUser.name,
-        username: newUser.username || '',
-        phoneNumber: newUser.phoneNumber || '',
         email: newUser.email,
         role: newUser.role,
         company: newUser.company,
