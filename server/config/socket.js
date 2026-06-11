@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { clerkClient } from '@clerk/express';
+import { clerkClient, verifyToken } from '@clerk/express';
 import User from '../models/User.js';
 import AIChat from '../models/AIChat.js';
 import { executeAgentChat } from '../services/aiAgentService.js';
@@ -37,7 +37,10 @@ export const initSocket = (server) => {
       }
 
       // Verify token with Clerk
-      const decoded = await clerkClient.verifyToken(token);
+      const decoded = await verifyToken(token, {
+        publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+        secretKey: process.env.CLERK_SECRET_KEY,
+      });
       
       let user = null;
       if (mongoose.connection.readyState === 1 && decoded.sub) {

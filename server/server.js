@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 // 🔑 Startup check & debug logging
 const requiredEnv = [
