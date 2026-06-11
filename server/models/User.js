@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   clerkId: {
     type: String,
-    required: [true, 'Please add a Clerk ID'],
+    sparse: true,
     unique: true,
     index: true
   },
@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema({
       /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
       'Please add a valid email'
     ]
+  },
+  password: {
+    type: String,
+    select: false
   },
   role: {
     type: String,

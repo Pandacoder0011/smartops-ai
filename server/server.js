@@ -15,6 +15,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import crudRoutes from './routes/crudRoutes.js';
+import seedRoutes from './routes/seedRoutes.js';
 import { clerkAuthSetup } from './middleware/clerkAuth.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import DashboardMetric from './models/DashboardMetric.js';
@@ -98,6 +99,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/seed', seedRoutes);
 app.use('/api', crudRoutes);
 
 // Health Check API

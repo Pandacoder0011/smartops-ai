@@ -45,10 +45,21 @@ const api = axios.create({
 
 // Request interceptor to attach bearer token
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    try {
+      if (window.Clerk?.session) {
+        const token = await window.Clerk.session.getToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } else {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching Clerk token in interceptor:', err);
     }
     return config;
   },

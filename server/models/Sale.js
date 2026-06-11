@@ -19,6 +19,12 @@ const saleItemSchema = new mongoose.Schema({
 }, { _id: false });
 
 const saleSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   products: {
     type: [saleItemSchema],
     validate: [val => val.length > 0, 'Sale must contain at least one product']
@@ -71,7 +77,8 @@ const saleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for analytics (sorting by region, date, or status)
+// Compound indexes for analytics and multi-tenant performance
+saleSchema.index({ owner: 1, createdAt: -1 });
 saleSchema.index({ region: 1, date: -1 });
 saleSchema.index({ date: -1, status: 1 });
 

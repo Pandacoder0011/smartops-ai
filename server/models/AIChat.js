@@ -18,6 +18,12 @@ const chatMessageSchema = new mongoose.Schema({
 }, { _id: false });
 
 const aiChatSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -37,7 +43,8 @@ const aiChatSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index chat sessions by user and update activity
+// Index chat sessions by user, owner, and activity
+aiChatSchema.index({ owner: 1, createdAt: -1 });
 aiChatSchema.index({ userId: 1, updatedAt: -1 });
 
 const AIChat = mongoose.model('AIChat', aiChatSchema);

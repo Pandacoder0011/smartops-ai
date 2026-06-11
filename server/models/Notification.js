@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -32,7 +38,8 @@ const notificationSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index to retrieve unread alerts by priority first
+// Compound indexes for retrieving unread alerts by priority first
+notificationSchema.index({ owner: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, read: 1, priority: 1, createdAt: -1 });
 
 const Notification = mongoose.model('Notification', notificationSchema);

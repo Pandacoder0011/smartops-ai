@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   name: {
     type: String,
     required: [true, 'Please add a product name'],
@@ -9,7 +15,6 @@ const productSchema = new mongoose.Schema({
   sku: {
     type: String,
     required: [true, 'Please add a SKU number'],
-    unique: true,
     uppercase: true,
     trim: true,
     index: true
@@ -59,6 +64,10 @@ const productSchema = new mongoose.Schema({
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
+
+// Compound index for timeline queries and scoped SKU uniqueness
+productSchema.index({ owner: 1, createdAt: -1 });
+productSchema.index({ owner: 1, sku: 1 }, { unique: true });
 
 // Pre-save hook to map stock levels to status automatically
 productSchema.pre('save', function(next) {

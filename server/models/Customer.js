@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
 const customerSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   name: {
     type: String,
     required: [true, 'Please add a customer name'],
@@ -9,7 +15,6 @@ const customerSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, 'Please add an email'],
-    unique: true,
     index: true,
     match: [
       /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
@@ -49,6 +54,10 @@ const customerSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Compound index for timeline queries and scoped email uniqueness
+customerSchema.index({ owner: 1, createdAt: -1 });
+customerSchema.index({ owner: 1, email: 1 }, { unique: true });
 
 // Segment automatically hooks into calculations (e.g. VIP threshold calculations)
 customerSchema.pre('save', function(next) {

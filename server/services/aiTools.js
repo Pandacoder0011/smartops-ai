@@ -6,6 +6,7 @@ import Transaction from '../models/Transaction.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import { emitNewSale, emitLowStockAlert } from '../config/socket.js';
+import mongoose from 'mongoose';
 
 // ==========================================
 // 1. Tool Declarations (Gemini API format)
@@ -109,10 +110,12 @@ const modelsMap = {
   Notification
 };
 
-export const executeTool = async (functionCall) => {
+export const executeTool = async (functionCall, ownerId) => {
   const { name, args } = functionCall;
   console.log(`🔌 [Agent Tool Exec] Model requesting invocation of tool: ${name} 🧠`);
   
+  const ownerObjId = ownerId ? (typeof ownerId === 'string' ? mongoose.Types.ObjectId.createFromHexString(ownerId) : ownerId) : null;
+
   try {
     switch (name) {
       case 'queryDatabase': {
@@ -124,6 +127,9 @@ export const executeTool = async (functionCall) => {
         }
         
         const filter = queryJson ? JSON.parse(queryJson) : {};
+        if (ownerObjId) {
+          filter.owner = ownerObjId;
+        }
         const maxLimit = limit ? parseInt(limit) : 10;
         
         console.log(`🔍 [DB Query] Searching ${entityType} with filters:`, filter);
@@ -140,6 +146,9 @@ export const executeTool = async (functionCall) => {
         }
         
         const data = JSON.parse(dataJson);
+        if (ownerObjId) {
+          data.owner = ownerObjId;
+        }
         console.log(`📝 [DB Insert] Creating new ${entityType} record:`, data);
         const record = await Model.create(data);
 
@@ -149,7 +158,7 @@ export const executeTool = async (functionCall) => {
             // 1. Process products and update stock levels
             if (record.products && record.products.length > 0) {
               for (const item of record.products) {
-                const product = await Product.findById(item.product);
+                const product = await Product.findOne({ _id: item.product, owner: ownerObjId });
                 if (product) {
                   // Update stock and status pre-save triggers automatically
                   product.stock = Math.max(0, product.stock - item.quantity);
@@ -158,18 +167,18 @@ export const executeTool = async (functionCall) => {
                   // 2. Check if product stock falls below minimum threshold
                   if (product.stock <= product.minStock) {
                     // Emit Socket.io low stock alert event
-                    emitLowStockAlert(product);
+                    emitLowStockAlert(product, ownerObjId);
 
                     // Find target user for the Notification
                     let targetUserId = null;
                     if (record.employee) {
-                      const emp = await Employee.findById(record.employee);
+                      const emp = await Employee.findOne({ _id: record.employee, owner: ownerObjId });
                       if (emp) {
                         targetUserId = emp.userId;
                       }
                     }
                     if (!targetUserId) {
-                      const fallbackUser = await User.findOne({});
+                      const fallbackUser = await User.findOne({ clerkId: { $exists: true } });
                       if (fallbackUser) {
                         targetUserId = fallbackUser._id;
                       }
@@ -178,6 +187,7 @@ export const executeTool = async (functionCall) => {
                     if (targetUserId) {
                       // Save notification to DB
                       await Notification.create({
+                        owner: ownerObjId,
                         userId: targetUserId,
                         type: 'inventory_alert',
                         message: `Stock for product '${product.name}' (${product.sku}) is low: only ${product.stock} units remaining (min limit: ${product.minStock}).`,
@@ -190,7 +200,7 @@ export const executeTool = async (functionCall) => {
             }
 
             // 3. Populate and emit new-sale event
-            const populatedSale = await Sale.findById(record._id)
+            const populatedSale = await Sale.findOne({ _id: record._id, owner: ownerObjId })
               .populate('customer')
               .populate({
                 path: 'employee',
@@ -198,7 +208,7 @@ export const executeTool = async (functionCall) => {
               })
               .populate('products.product');
 
-            emitNewSale(populatedSale);
+            emitNewSale(populatedSale, ownerObjId);
           } catch (hookErr) {
             console.error('🔴 Error in Sale post-creation real-time hook:', hookErr.message);
           }
@@ -211,6 +221,7 @@ export const executeTool = async (functionCall) => {
         const { userId, type, message, priority } = args;
         console.log(`🔔 [Notification] Sending alert to ${userId} (${type}):`, message);
         const notif = await Notification.create({
+          owner: ownerObjId,
           userId,
           type,
           message,
@@ -226,6 +237,7 @@ export const executeTool = async (functionCall) => {
         
         if (reportType === 'inventory_balance') {
           const stats = await Product.aggregate([
+            { $match: { owner: ownerObjId } },
             { $group: { _id: '$category', totalStock: { $sum: '$stock' }, count: { $sum: 1 } } }
           ]);
           return { success: true, reportType, data: stats };
@@ -233,6 +245,7 @@ export const executeTool = async (functionCall) => {
         
         if (reportType === 'sales_summary') {
           const stats = await Sale.aggregate([
+            { $match: { owner: ownerObjId } },
             { $group: { _id: '$region', totalSales: { $sum: '$totalAmount' }, profit: { $sum: '$profit' } } }
           ]);
           return { success: true, reportType, data: stats };
@@ -240,6 +253,7 @@ export const executeTool = async (functionCall) => {
 
         if (reportType === 'profit_analysis') {
           const stats = await Sale.aggregate([
+            { $match: { owner: ownerObjId } },
             { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' }, totalProfit: { $sum: '$profit' } } }
           ]);
           return { success: true, reportType, data: stats };

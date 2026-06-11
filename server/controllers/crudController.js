@@ -12,7 +12,7 @@ import Notification from '../models/Notification.js';
 export const getProducts = async (req, res, next) => {
   try {
     const { search, status, category, supplier, stockStatus, sort, page = 1, limit = 10 } = req.query;
-    const query = {};
+    const query = { owner: req.user._id };
 
     // Search filter
     if (search) {
@@ -81,7 +81,10 @@ export const getProducts = async (req, res, next) => {
 
 export const createProduct = async (req, res, next) => {
   try {
-    const product = await Product.create(req.body);
+    const product = await Product.create({
+      ...req.body,
+      owner: req.user._id
+    });
     res.status(201).json({ success: true, data: product });
   } catch (error) {
     next(error);
@@ -90,9 +93,9 @@ export const createProduct = async (req, res, next) => {
 
 export const updateProduct = async (req, res, next) => {
   try {
-    let product = await Product.findById(req.params.id);
+    let product = await Product.findOne({ _id: req.params.id, owner: req.user._id });
     if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Product not found or unauthorized 🔍' });
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -108,9 +111,9 @@ export const updateProduct = async (req, res, next) => {
 
 export const deleteProduct = async (req, res, next) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findOne({ _id: req.params.id, owner: req.user._id });
     if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Product not found or unauthorized 🔍' });
     }
 
     await product.deleteOne();
@@ -128,7 +131,7 @@ export const bulkDeleteProducts = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide an array of product IDs' });
     }
 
-    await Product.deleteMany({ _id: { $in: ids } });
+    await Product.deleteMany({ _id: { $in: ids }, owner: req.user._id });
     res.status(200).json({ success: true, message: `${ids.length} products deleted successfully 🗑️` });
   } catch (error) {
     next(error);
@@ -145,13 +148,12 @@ export const bulkUpdateProductStatus = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide status' });
     }
 
-    await Product.updateMany({ _id: { $in: ids } }, { status });
+    await Product.updateMany({ _id: { $in: ids }, owner: req.user._id }, { status });
     res.status(200).json({ success: true, message: `${ids.length} products updated successfully 🔄` });
   } catch (error) {
     next(error);
   }
 };
-
 
 // ==========================================
 // 2. CUSTOMERS CONTROLLERS
@@ -160,7 +162,7 @@ export const bulkUpdateProductStatus = async (req, res, next) => {
 export const getCustomers = async (req, res, next) => {
   try {
     const { search, segment, sort, page = 1, limit = 10 } = req.query;
-    const query = {};
+    const query = { owner: req.user._id };
 
     // Search filter
     if (search) {
@@ -210,7 +212,10 @@ export const getCustomers = async (req, res, next) => {
 
 export const createCustomer = async (req, res, next) => {
   try {
-    const customer = await Customer.create(req.body);
+    const customer = await Customer.create({
+      ...req.body,
+      owner: req.user._id
+    });
     res.status(201).json({ success: true, data: customer });
   } catch (error) {
     next(error);
@@ -219,9 +224,9 @@ export const createCustomer = async (req, res, next) => {
 
 export const updateCustomer = async (req, res, next) => {
   try {
-    let customer = await Customer.findById(req.params.id);
+    let customer = await Customer.findOne({ _id: req.params.id, owner: req.user._id });
     if (!customer) {
-      return res.status(404).json({ success: false, message: 'Customer not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Customer not found or unauthorized 🔍' });
     }
 
     customer = await Customer.findByIdAndUpdate(req.params.id, req.body, {
@@ -237,9 +242,9 @@ export const updateCustomer = async (req, res, next) => {
 
 export const deleteCustomer = async (req, res, next) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({ _id: req.params.id, owner: req.user._id });
     if (!customer) {
-      return res.status(404).json({ success: false, message: 'Customer not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Customer not found or unauthorized 🔍' });
     }
 
     await customer.deleteOne();
@@ -256,13 +261,12 @@ export const bulkDeleteCustomers = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide an array of customer IDs' });
     }
 
-    await Customer.deleteMany({ _id: { $in: ids } });
+    await Customer.deleteMany({ _id: { $in: ids }, owner: req.user._id });
     res.status(200).json({ success: true, message: `${ids.length} customers deleted successfully 🗑️` });
   } catch (error) {
     next(error);
   }
 };
-
 
 // ==========================================
 // 3. SALES CONTROLLERS
@@ -271,10 +275,8 @@ export const bulkDeleteCustomers = async (req, res, next) => {
 export const getSales = async (req, res, next) => {
   try {
     const { search, status, paymentMethod, region, sort, page = 1, limit = 10 } = req.query;
-    const query = {};
+    const query = { owner: req.user._id };
 
-    // Search filter: since customer and employee are populated, we can search by region or lookup customers if needed.
-    // However, to keep it simple, we can support searching by region or status, and check if search is an ID.
     if (search) {
       query.$or = [
         { region: { $regex: search, $options: 'i' } },
@@ -305,7 +307,6 @@ export const getSales = async (req, res, next) => {
     const total = await Sale.countDocuments(query);
     const sales = await Sale.find(query)
       .populate('customer')
-      .populate('employee')
       .populate({
         path: 'employee',
         populate: { path: 'userId', select: 'name email role avatar' }
@@ -345,7 +346,7 @@ export const createSale = async (req, res, next) => {
     const items = [];
 
     for (const item of products) {
-      const productObj = await Product.findById(item.product);
+      const productObj = await Product.findOne({ _id: item.product, owner: req.user._id });
       if (!productObj) {
         return res.status(400).json({ success: false, message: `Product not found: ${item.product}` });
       }
@@ -372,6 +373,7 @@ export const createSale = async (req, res, next) => {
 
     // 2. Create the Sale
     const sale = await Sale.create({
+      owner: req.user._id,
       products: items,
       customer,
       employee,
@@ -394,44 +396,47 @@ export const createSale = async (req, res, next) => {
     // 3. Decrement Product Stocks & Trigger Alerts
     const io = req.app.get('socketio');
     for (const item of items) {
-      const productObj = await Product.findById(item.product);
-      productObj.stock -= item.quantity;
-      await productObj.save();
+      const productObj = await Product.findOne({ _id: item.product, owner: req.user._id });
+      if (productObj) {
+        productObj.stock -= item.quantity;
+        await productObj.save();
 
-      // Check for low stock
-      if (productObj.stock <= productObj.minStock) {
-        // Create DB Notification
-        const notification = await Notification.create({
-          userId: req.user?._id || customer, // fallback if user context is missing
-          type: 'inventory_alert',
-          message: `Product "${productObj.name}" is running low on stock. Current stock: ${productObj.stock} (Threshold: ${productObj.minStock})`,
-          priority: 'high'
-        });
-
-        // Broadcast low-stock-alert
-        if (io) {
-          io.emit('low-stock-alert', {
-            productId: productObj._id,
-            name: productObj.name,
-            stock: productObj.stock,
-            minStock: productObj.minStock,
-            notification
+        // Check for low stock
+        if (productObj.stock <= productObj.minStock) {
+          // Create DB Notification
+          const notification = await Notification.create({
+            owner: req.user._id,
+            userId: req.user._id,
+            type: 'inventory_alert',
+            message: `Product "${productObj.name}" is running low on stock. Current stock: ${productObj.stock} (Threshold: ${productObj.minStock})`,
+            priority: 'high'
           });
+
+          // Broadcast low-stock-alert to user's room
+          if (io) {
+            io.to(`user:${req.user._id}`).emit('low-stock-alert', {
+              productId: productObj._id,
+              name: productObj.name,
+              stock: productObj.stock,
+              minStock: productObj.minStock,
+              notification
+            });
+          }
         }
       }
     }
 
     // Update Customer loyalty points and totalPurchases
-    const customerObj = await Customer.findById(customer);
+    const customerObj = await Customer.findOne({ _id: customer, owner: req.user._id });
     if (customerObj) {
       customerObj.totalPurchases += totalAmount;
-      customerObj.loyaltyPoints += Math.floor(totalAmount / 10); // 1 point per $10 spent
+      customerObj.loyaltyPoints += Math.floor(totalAmount / 10);
       await customerObj.save();
     }
 
-    // Broadcast new-sale
+    // Broadcast new-sale to user's room
     if (io) {
-      io.emit('new-sale', populatedSale);
+      io.to(`user:${req.user._id}`).emit('new-sale', populatedSale);
     }
 
     res.status(201).json({ success: true, data: populatedSale });
@@ -442,9 +447,9 @@ export const createSale = async (req, res, next) => {
 
 export const updateSale = async (req, res, next) => {
   try {
-    let sale = await Sale.findById(req.params.id);
+    let sale = await Sale.findOne({ _id: req.params.id, owner: req.user._id });
     if (!sale) {
-      return res.status(404).json({ success: false, message: 'Sale not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Sale not found or unauthorized 🔍' });
     }
 
     // Support updating sale status (e.g. cancelled)
@@ -465,7 +470,7 @@ export const updateSale = async (req, res, next) => {
     // If sale status changed to cancelled, refund product stock!
     if (oldStatus !== 'cancelled' && newStatus === 'cancelled') {
       for (const item of sale.products) {
-        const productObj = await Product.findById(item.product);
+        const productObj = await Product.findOne({ _id: item.product, owner: req.user._id });
         if (productObj) {
           productObj.stock += item.quantity;
           await productObj.save();
@@ -481,15 +486,15 @@ export const updateSale = async (req, res, next) => {
 
 export const deleteSale = async (req, res, next) => {
   try {
-    const sale = await Sale.findById(req.params.id);
+    const sale = await Sale.findOne({ _id: req.params.id, owner: req.user._id });
     if (!sale) {
-      return res.status(404).json({ success: false, message: 'Sale not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Sale not found or unauthorized 🔍' });
     }
 
     // Refund stock if deleting a non-cancelled sale
     if (sale.status !== 'cancelled') {
       for (const item of sale.products) {
-        const productObj = await Product.findById(item.product);
+        const productObj = await Product.findOne({ _id: item.product, owner: req.user._id });
         if (productObj) {
           productObj.stock += item.quantity;
           await productObj.save();
@@ -498,12 +503,11 @@ export const deleteSale = async (req, res, next) => {
     }
 
     await sale.deleteOne();
-    res.status(200).json({ success: true, message: 'Sale deleted successfully 🗑#' });
+    res.status(200).json({ success: true, message: 'Sale deleted successfully 🗑️' });
   } catch (error) {
     next(error);
   }
 };
-
 
 // ==========================================
 // 4. EMPLOYEES CONTROLLERS
@@ -512,19 +516,16 @@ export const deleteSale = async (req, res, next) => {
 export const getEmployees = async (req, res, next) => {
   try {
     const { search, department, position, sort, page = 1, limit = 10 } = req.query;
-    const query = {};
+    const query = { owner: req.user._id };
 
-    // Filter by department
     if (department) {
       query.department = department;
     }
 
-    // Filter by position
     if (position) {
       query.position = position;
     }
 
-    // Search logic: if search, we need to match user name or email, or employee department/position
     if (search) {
       const matchedUsers = await User.find({
         $or: [
@@ -600,6 +601,7 @@ export const createEmployee = async (req, res, next) => {
 
     // 2. Create Employee profile
     const employee = await Employee.create({
+      owner: req.user._id,
       userId: user._id,
       department,
       position,
@@ -619,12 +621,12 @@ export const updateEmployee = async (req, res, next) => {
   try {
     const { name, email, role, department, position, salary, performance, tasks, attendance } = req.body;
 
-    let employee = await Employee.findById(req.params.id);
+    let employee = await Employee.findOne({ _id: req.params.id, owner: req.user._id });
     if (!employee) {
-      return res.status(404).json({ success: false, message: 'Employee profile not found' });
+      return res.status(404).json({ success: false, message: 'Employee profile not found or unauthorized' });
     }
 
-    // 1. Update Mongoose User profile fields if passed
+    // 1. Update User profile fields
     const userUpdate = {};
     if (name) userUpdate.name = name;
     if (email) userUpdate.email = email;
@@ -656,9 +658,9 @@ export const updateEmployee = async (req, res, next) => {
 
 export const deleteEmployee = async (req, res, next) => {
   try {
-    const employee = await Employee.findById(req.params.id);
+    const employee = await Employee.findOne({ _id: req.params.id, owner: req.user._id });
     if (!employee) {
-      return res.status(404).json({ success: false, message: 'Employee profile not found 🔍' });
+      return res.status(404).json({ success: false, message: 'Employee profile not found or unauthorized' });
     }
 
     // Delete linked User
@@ -679,13 +681,13 @@ export const bulkDeleteEmployees = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide an array of employee IDs' });
     }
 
-    // Find employees to get their userIds
-    const employees = await Employee.find({ _id: { $in: ids } });
+    // Find employees matching owner to get their userIds
+    const employees = await Employee.find({ _id: { $in: ids }, owner: req.user._id });
     const userIds = employees.map(emp => emp.userId);
 
     // Delete users and employees
     await User.deleteMany({ _id: { $in: userIds } });
-    await Employee.deleteMany({ _id: { $in: ids } });
+    await Employee.deleteMany({ _id: { $in: ids }, owner: req.user._id });
 
     res.status(200).json({ success: true, message: `${ids.length} employees deleted successfully 🗑️` });
   } catch (error) {

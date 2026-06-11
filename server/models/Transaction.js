@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
 const transactionSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   type: {
     type: String,
     enum: ['income', 'expense'],
@@ -37,7 +43,8 @@ const transactionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for timeline-based accounting filter queries
+// Compound indexes for timeline-based accounting filter queries
+transactionSchema.index({ owner: 1, createdAt: -1 });
 transactionSchema.index({ type: 1, date: -1 });
 transactionSchema.index({ category: 1, date: -1 });
 

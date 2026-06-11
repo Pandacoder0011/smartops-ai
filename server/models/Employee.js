@@ -33,11 +33,16 @@ const taskSchema = new mongoose.Schema({
 }, { _id: false });
 
 const employeeSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'Employee must be linked to a user account'],
-    unique: true,
     index: true
   },
   department: {
@@ -73,6 +78,10 @@ const employeeSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Compound index for timeline queries and scoped userId uniqueness
+employeeSchema.index({ owner: 1, createdAt: -1 });
+employeeSchema.index({ owner: 1, userId: 1 }, { unique: true });
 
 const Employee = mongoose.model('Employee', employeeSchema);
 export default Employee;

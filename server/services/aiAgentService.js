@@ -27,7 +27,7 @@ Guidelines:
  * @param {function} onStreamChunk - Callback function triggered to stream text chunks to client in real-time.
  * @returns {Promise<string>} The complete combined text response message.
  */
-export const executeAgentChat = async (userPrompt, chatHistory, onStreamChunk) => {
+export const executeAgentChat = async (userPrompt, chatHistory, onStreamChunk, ownerId) => {
   if (!geminiAI) {
     // Return mock response if key is missing
     const mockMsg = getMockResponse(userPrompt);
@@ -67,7 +67,7 @@ export const executeAgentChat = async (userPrompt, chatHistory, onStreamChunk) =
       const functionResponses = [];
       
       for (const call of functionCalls) {
-        const toolResult = await executeTool(call);
+        const toolResult = await executeTool(call, ownerId);
         functionResponses.push({
           functionResponse: {
             name: call.name,

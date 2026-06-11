@@ -6,12 +6,12 @@ import Transaction from '../models/Transaction.js';
 import mongoose from 'mongoose';
 
 // Heuristics check: if DB has no data or is disconnected, use mock fallbacks to keep dashboard premium
-const useMockFallback = async () => {
+const useMockFallback = async (ownerId) => {
   try {
     if (mongoose.connection.readyState !== 1) {
       return true;
     }
-    const saleCount = await Sale.countDocuments();
+    const saleCount = await Sale.countDocuments({ owner: ownerId });
     return saleCount < 5;
   } catch (error) {
     console.warn('⚠️ MongoDB connection not ready or empty. Defaulting to mock fallbacks. 🤖');
@@ -19,12 +19,21 @@ const useMockFallback = async () => {
   }
 };
 
+const getOwnerObjectId = (req) => {
+  const rawId = req.user._id;
+  return typeof rawId === 'string'
+    ? mongoose.Types.ObjectId.createFromHexString(rawId)
+    : rawId;
+};
+
 // ==========================================
 // 1. GET /api/analytics/overview
 // ==========================================
 export const getOverview = async (req, res, next) => {
   try {
-    if (await useMockFallback()) {
+    const ownerId = getOwnerObjectId(req);
+
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
@@ -39,6 +48,7 @@ export const getOverview = async (req, res, next) => {
 
     // A. Totals calculation using Sales aggregation
     const salesStats = await Sale.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: null,
@@ -50,14 +60,14 @@ export const getOverview = async (req, res, next) => {
 
     // B. Expenses calculation using Transactions aggregation
     const expenseStats = await Transaction.aggregate([
-      { $match: { type: 'expense' } },
+      { $match: { owner: ownerId, type: 'expense' } },
       { $group: { _id: null, totalExpenses: { $sum: '$amount' } } }
     ]);
 
     // C. Model Counts
-    const customerCount = await Customer.countDocuments();
-    const productCount = await Product.countDocuments();
-    const employeeCount = await Employee.countDocuments();
+    const customerCount = await Customer.countDocuments({ owner: ownerId });
+    const productCount = await Product.countDocuments({ owner: ownerId });
+    const employeeCount = await Employee.countDocuments({ owner: ownerId });
 
     // D. Growth (Last Month vs Prior Month)
     const thirtyDaysAgo = new Date();
@@ -66,12 +76,12 @@ export const getOverview = async (req, res, next) => {
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
     const recentSales = await Sale.aggregate([
-      { $match: { date: { $gte: thirtyDaysAgo } } },
+      { $match: { owner: ownerId, date: { $gte: thirtyDaysAgo } } },
       { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
     ]);
 
     const priorSales = await Sale.aggregate([
-      { $match: { date: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
+      { $match: { owner: ownerId, date: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } } },
       { $group: { _id: null, revenue: { $sum: '$totalAmount' } } }
     ]);
 
@@ -84,12 +94,12 @@ export const getOverview = async (req, res, next) => {
     startOfToday.setHours(0, 0, 0, 0);
 
     const todaySales = await Sale.aggregate([
-      { $match: { date: { $gte: startOfToday } } },
+      { $match: { owner: ownerId, date: { $gte: startOfToday } } },
       { $group: { _id: null, revenue: { $sum: '$totalAmount' }, profit: { $sum: '$profit' } } }
     ]);
 
     const todayExpenses = await Transaction.aggregate([
-      { $match: { type: 'expense', date: { $gte: startOfToday } } },
+      { $match: { owner: ownerId, type: 'expense', date: { $gte: startOfToday } } },
       { $group: { _id: null, expenses: { $sum: '$amount' } } }
     ]);
 
@@ -109,7 +119,7 @@ export const getOverview = async (req, res, next) => {
         },
         growth: {
           revenue: revenueGrowth,
-          profit: 10.5, // Heuristic estimation
+          profit: 10.5,
           expenses: 5.2
         },
         today: {
@@ -129,9 +139,10 @@ export const getOverview = async (req, res, next) => {
 // ==========================================
 export const getSalesTrend = async (req, res, next) => {
   const { period } = req.query; // '7d', '30d', '90d', '1y'
-  
+  const ownerId = getOwnerObjectId(req);
+
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       const mockTrends = {
         '7d': [
           { name: 'Mon', revenue: 12000, unitsSold: 45 },
@@ -175,7 +186,7 @@ export const getSalesTrend = async (req, res, next) => {
     }
 
     const salesTrend = await Sale.aggregate([
-      { $match: { date: { $gte: dateLimit } } },
+      { $match: { owner: ownerId, date: { $gte: dateLimit } } },
       {
         $group: {
           _id: { $dateToString: { format, date: '$date' } },
@@ -205,9 +216,10 @@ export const getSalesTrend = async (req, res, next) => {
 // ==========================================
 export const getTopProducts = async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
+  const ownerId = getOwnerObjectId(req);
 
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
@@ -221,6 +233,7 @@ export const getTopProducts = async (req, res, next) => {
     }
 
     const topProducts = await Sale.aggregate([
+      { $match: { owner: ownerId } },
       { $unwind: '$products' },
       {
         $group: {
@@ -261,8 +274,10 @@ export const getTopProducts = async (req, res, next) => {
 // 4. GET /api/analytics/customer-segments
 // ==========================================
 export const getCustomerSegments = async (req, res, next) => {
+  const ownerId = getOwnerObjectId(req);
+
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
@@ -276,6 +291,7 @@ export const getCustomerSegments = async (req, res, next) => {
 
     // Segment distributions
     const customerSegments = await Customer.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: '$segment',
@@ -293,6 +309,7 @@ export const getCustomerSegments = async (req, res, next) => {
 
     // Segment revenue mapping
     const segmentRevenue = await Sale.aggregate([
+      { $match: { owner: ownerId } },
       {
         $lookup: {
           from: 'customers',
@@ -330,8 +347,10 @@ export const getCustomerSegments = async (req, res, next) => {
 // 5. GET /api/analytics/inventory-status
 // ==========================================
 export const getInventoryStatus = async (req, res, next) => {
+  const ownerId = getOwnerObjectId(req);
+
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
@@ -347,12 +366,14 @@ export const getInventoryStatus = async (req, res, next) => {
     }
 
     const lowStockAlerts = await Product.countDocuments({
-      stock: { $gt: 0, $lte: 10 } // Assumed lower limit 10
+      owner: ownerId,
+      stock: { $gt: 0, $lte: 10 }
     });
 
-    const outOfStockAlerts = await Product.countDocuments({ stock: 0 });
+    const outOfStockAlerts = await Product.countDocuments({ owner: ownerId, stock: 0 });
 
     const categoryStats = await Product.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: '$category',
@@ -390,8 +411,10 @@ export const getInventoryStatus = async (req, res, next) => {
 // 6. GET /api/analytics/revenue-by-region
 // ==========================================
 export const getRevenueByRegion = async (req, res, next) => {
+  const ownerId = getOwnerObjectId(req);
+
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
@@ -405,6 +428,7 @@ export const getRevenueByRegion = async (req, res, next) => {
     }
 
     const regionalRevenue = await Sale.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: '$region',
@@ -433,8 +457,10 @@ export const getRevenueByRegion = async (req, res, next) => {
 // 7. GET /api/analytics/employee-performance
 // ==========================================
 export const getEmployeePerformance = async (req, res, next) => {
+  const ownerId = getOwnerObjectId(req);
+
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
@@ -447,6 +473,7 @@ export const getEmployeePerformance = async (req, res, next) => {
     }
 
     const employeeSales = await Sale.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: '$employee',
@@ -495,13 +522,15 @@ export const getEmployeePerformance = async (req, res, next) => {
 // 8. GET /api/analytics/financial-summary
 // ==========================================
 export const getFinancialSummary = async (req, res, next) => {
+  const ownerId = getOwnerObjectId(req);
+
   try {
-    if (await useMockFallback()) {
+    if (await useMockFallback(ownerId)) {
       return res.status(200).json({
         success: true,
         source: 'mock',
         data: {
-          profitMargin: 46.06, // Heuristic profit ratio
+          profitMargin: 46.06,
           timeline: [
             { name: 'Jan', income: 110000, expenses: 60000, profit: 50000 },
             { name: 'Feb', income: 125000, expenses: 72000, profit: 53000 },
@@ -513,6 +542,7 @@ export const getFinancialSummary = async (req, res, next) => {
 
     // Profit margin ratio calculation
     const salesStats = await Sale.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: null,
@@ -528,6 +558,7 @@ export const getFinancialSummary = async (req, res, next) => {
 
     // Timeline grouping Transactions by month
     const timelineData = await Transaction.aggregate([
+      { $match: { owner: ownerId } },
       {
         $group: {
           _id: {

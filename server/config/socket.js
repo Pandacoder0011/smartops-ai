@@ -1,10 +1,9 @@
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
+import { clerkClient } from '@clerk/express';
 import User from '../models/User.js';
 import AIChat from '../models/AIChat.js';
 import { executeAgentChat } from '../services/aiAgentService.js';
 import mongoose from 'mongoose';
-import { mockUsers } from '../controllers/authController.js';
 
 let ioInstance = null;
 const socketUserMap = new Map(); // socket.id -> User info object
@@ -24,7 +23,7 @@ export const initSocket = (server) => {
     }
   });
 
-  // JWT handshake authentication middleware
+  // Clerk handshake authentication middleware
   ioInstance.use(async (socket, next) => {
     try {
       // Retrieve token from connection parameters: auth object or query params or authorization headers
@@ -37,30 +36,29 @@ export const initSocket = (server) => {
         return next(new Error('Authentication failed: Token is required for secure telemetry 🚨'));
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'smartops_jwt_secret_dev_key');
+      // Verify token with Clerk
+      const decoded = await clerkClient.verifyToken(token);
       
-      let user;
-      if (mongoose.connection.readyState !== 1 || !mongoose.Types.ObjectId.isValid(decoded.id)) {
-        // Fallback to in-memory user lookup
-        const mockUser = mockUsers.find(u => u._id === decoded.id);
-        user = mockUser || {
-          _id: decoded.id || 'mock-admin-id-123',
-          name: 'Demo Admin',
-          email: 'admin@smartops.ai',
-          role: 'admin',
-          company: 'SmartOps AI Mock',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256'
-        };
-      } else {
-        user = await User.findById(decoded.id).select('-password');
+      let user = null;
+      if (mongoose.connection.readyState === 1 && decoded.sub) {
+        try {
+          user = await User.findOne({ clerkId: decoded.sub }).select('-password');
+        } catch (dbErr) {
+          console.error('⚠️ MongoDB Query Error during Socket auth:', dbErr.message);
+        }
       }
 
-      if (!user) {
-        console.warn(`⚠️ Socket connection handshake rejected: User not found [Socket ID: ${socket.id}]`);
-        return next(new Error('Authentication failed: Authorized user profile not found 🚨'));
-      }
+      // Attach user profile with fallback for offline database or webhook delay
+      socket.user = user || {
+        _id: decoded.sub, // fallback ID
+        clerkId: decoded.sub,
+        name: 'Demo Admin',
+        email: 'admin@smartops.ai',
+        role: 'admin',
+        company: 'SmartOps AI',
+        workspaceId: 'workspace-12345'
+      };
 
-      socket.user = user;
       next();
     } catch (error) {
       console.error(`🔴 Socket auth error during handshake [Socket ID: ${socket.id}]:`, error.message);
@@ -69,7 +67,11 @@ export const initSocket = (server) => {
   });
 
   ioInstance.on('connection', (socket) => {
-    console.log(`🟢 Socket client connected: ${socket.id} | User: ${socket.user.name} (${socket.user.email})`);
+    const userIdStr = socket.user._id.toString();
+    console.log(`🟢 Socket client connected: ${socket.id} | User: ${socket.user.name} (ID: ${userIdStr})`);
+
+    // Join user-specific room for scoped notifications/events
+    socket.join(`user:${userIdStr}`);
 
     // Track active connection
     socketUserMap.set(socket.id, {
@@ -78,7 +80,7 @@ export const initSocket = (server) => {
       email: socket.user.email,
       role: socket.user.role,
       company: socket.user.company,
-      avatar: socket.user.avatar
+      avatar: socket.user.avatar || ''
     });
 
     // Broadcast updated list of online users
@@ -106,9 +108,9 @@ export const initSocket = (server) => {
             mockSocketChatSessions.push(chatSession);
           }
         } else {
-          chatSession = await AIChat.findOne({ userId });
+          chatSession = await AIChat.findOne({ owner: userId, userId });
           if (!chatSession) {
-            chatSession = await AIChat.create({ userId, messages: [] });
+            chatSession = await AIChat.create({ owner: userId, userId, messages: [] });
           }
         }
 
@@ -126,7 +128,7 @@ export const initSocket = (server) => {
           socket.emit('ai-response-stream', { chunk });
         };
 
-        const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk);
+        const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk, userId);
 
         // Store back
         chatSession.messages.push({ role: 'user', content: prompt, timestamp: new Date() });
@@ -186,23 +188,35 @@ const broadcastOnlineUsers = () => {
   ioInstance.emit('user-online', uniqueUsers);
 };
 
-// 'new-sale' - Broadcast when sale is made
-export const emitNewSale = (sale) => {
-  if (ioInstance) {
-    console.log(`📣 Broadcasting event 'new-sale' for Sale ID: ${sale._id}`);
-    ioInstance.emit('new-sale', sale);
+// 'new-sale' - Broadcast to owner's room
+export const emitNewSale = (sale, ownerId) => {
+  if (ioInstance && sale) {
+    const userRoom = ownerId ? ownerId.toString() : (sale.owner ? sale.owner.toString() : null);
+    if (userRoom) {
+      console.log(`📣 Broadcasting event 'new-sale' to room user:${userRoom} for Sale ID: ${sale._id}`);
+      ioInstance.to(`user:${userRoom}`).emit('new-sale', sale);
+    } else {
+      console.log(`📣 Broadcasting event 'new-sale' globally for Sale ID: ${sale._id}`);
+      ioInstance.emit('new-sale', sale);
+    }
   }
 };
 
-// 'low-stock-alert' - Push low stock notifications
-export const emitLowStockAlert = (product) => {
-  if (ioInstance) {
-    console.log(`📣 Broadcasting event 'low-stock-alert' for Product: ${product.name} (Stock: ${product.stock})`);
-    ioInstance.emit('low-stock-alert', product);
+// 'low-stock-alert' - Push low stock notifications to owner's room
+export const emitLowStockAlert = (product, ownerId) => {
+  if (ioInstance && product) {
+    const userRoom = ownerId ? ownerId.toString() : (product.owner ? product.owner.toString() : null);
+    if (userRoom) {
+      console.log(`📣 Broadcasting event 'low-stock-alert' to room user:${userRoom} for Product: ${product.name}`);
+      ioInstance.to(`user:${userRoom}`).emit('low-stock-alert', product);
+    } else {
+      console.log(`📣 Broadcasting event 'low-stock-alert' globally for Product: ${product.name}`);
+      ioInstance.emit('low-stock-alert', product);
+    }
   }
 };
 
-// 'dashboard-update' - Live dashboard metrics
+// 'dashboard-update' - Live dashboard metrics (broadcast globally since metrics are global)
 export const emitDashboardUpdate = (metric) => {
   if (ioInstance) {
     console.log(`📣 Broadcasting event 'dashboard-update' for Metric: ${metric.name}`);

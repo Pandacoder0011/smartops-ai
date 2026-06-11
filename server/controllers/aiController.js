@@ -50,7 +50,7 @@ export const chat = async (req, res, next) => {
         res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
       };
 
-      const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk);
+      const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk, userId);
 
       // Save messages in memory
       chatSession.messages.push({ role: 'user', content: prompt, timestamp: new Date() });
@@ -62,9 +62,9 @@ export const chat = async (req, res, next) => {
     }
 
     // MongoDB path
-    let chatSession = await AIChat.findOne({ userId });
+    let chatSession = await AIChat.findOne({ owner: userId, userId });
     if (!chatSession) {
-      chatSession = await AIChat.create({ userId, messages: [] });
+      chatSession = await AIChat.create({ owner: userId, userId, messages: [] });
     }
 
     const contextHistory = chatSession.messages.slice(-10).map(msg => ({
@@ -78,7 +78,7 @@ export const chat = async (req, res, next) => {
       res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
     };
 
-    const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk);
+    const finalAnswer = await executeAgentChat(prompt, contextHistory, onStreamChunk, userId);
 
     chatSession.messages.push({ role: 'user', content: prompt, timestamp: new Date() });
     chatSession.messages.push({ role: 'assistant', content: finalAnswer, timestamp: new Date() });
@@ -212,7 +212,7 @@ export const getHistory = async (req, res, next) => {
       });
     }
 
-    const chatSession = await AIChat.findOne({ userId });
+    const chatSession = await AIChat.findOne({ owner: userId, userId });
     return res.status(200).json({
       success: true,
       count: chatSession?.messages?.length || 0,

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const MAX_RETRIES = 5;
 const RETRY_INTERVAL_MS = 5000;
+let isListenerRegistered = false;
 
 /**
  * Establishes connection to MongoDB database.
@@ -16,11 +17,24 @@ const connectDB = async (retryCount = 0) => {
   mongoose.set('bufferCommands', false);
 
   const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/smartops';
+  // Strip sensitive credentials from log
+  const sanitizedUri = dbUri.replace(/mongodb(\+srv)?:\/\/([^:]+):([^@]+)@/, 'mongodb$1://***:***@');
   console.log(`🔌 Attempting to connect to MongoDB... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
 
   try {
     const conn = await mongoose.connect(dbUri);
     console.log(`🟢 MongoDB Connected Successfully: ${conn.connection.host} 🎉`);
+
+    if (!isListenerRegistered) {
+      mongoose.connection.on('disconnected', () => {
+        console.log('⚠️ MongoDB disconnected! Attempting auto-reconnection...');
+        // Retry connection if fully disconnected (readyState 0)
+        if (mongoose.connection.readyState === 0) {
+          connectDB(0);
+        }
+      });
+      isListenerRegistered = true;
+    }
   } catch (error) {
     console.error(`🔴 MongoDB Connection Error: ${error.message}`);
     
